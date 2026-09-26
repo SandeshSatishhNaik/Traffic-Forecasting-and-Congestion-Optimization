@@ -6,6 +6,21 @@
 
 Status: **title only**. No scope, dataset, metrics, deliverables or timeline have been provided yet.
 
+## Clarified core problem (from the team)
+
+> Predict upcoming traffic patterns for a region. Treat the region as zones/locations, and forecast the traffic for the near future from previous (historical) data.
+
+Formally: given the past `T` time steps of traffic measurements (speed or flow) at `N` locations in a region, predict the next `T'` steps at all `N` locations.
+
+```
+input  X[t-T+1 .. t]   shape (T,  N, C)   C = features per location (speed, flow, time-of-day, ...)
+output Y[t+1 .. t+T']  shape (T', N)
+```
+
+Common default: 5-minute intervals, `T = 12` (past 1 hour) → `T' = 12` (next 1 hour), reported at 15 / 30 / 60 min.
+
+**Scope note:** the core problem is *forecasting only*. The words "Congestion Optimization" in the title were added and are not yet backed by any planned work — see the roadmap for how to either justify or remove them.
+
 ## Decomposition of the title
 
 | Phrase | What it commits the project to |
