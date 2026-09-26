@@ -29,7 +29,7 @@ Visual blueprint of the whole system and its data: https://claude.ai/artifact/Jb
 |---|---|
 | Spatio-temporal | Model the road network as a graph (sensors/intersections = nodes, road links = edges) and traffic as a time series on every node. Points to graph-based deep learning (STGCN, DCRNN, Graph WaveNet, AGCRN, GMAN, transformer variants). |
 | Traffic forecasting | Predict speed / flow / occupancy per node for short horizons (typically 15, 30, 60 min). Standard metrics: MAE, RMSE, MAPE. |
-| Congestion optimization | **Undefined.** Could mean adaptive signal control, route guidance, ramp metering, or congestion hotspot alerts with recommendations. Each is a different sub-project. |
+| Congestion optimization | **Decided: route recommendation** plus congestion alerts, both driven by the forecasts. (Signal control, ramp metering were considered and not chosen.) |
 | Intelligence system | An end-to-end system, not only a trained model: data pipeline → model → API → dashboard/map. |
 | AI-driven | Learned models (deep learning and/or reinforcement learning) rather than rule-based only. |
 
