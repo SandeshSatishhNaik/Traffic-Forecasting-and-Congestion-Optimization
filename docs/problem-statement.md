@@ -19,7 +19,9 @@ output Y[t+1 .. t+T']  shape (T', N)
 
 Common default: 5-minute intervals, `T = 12` (past 1 hour) → `T' = 12` (next 1 hour), reported at 15 / 30 / 60 min.
 
-**Scope note:** the core problem is *forecasting only*. The words "Congestion Optimization" in the title were added and are not yet backed by any planned work — see the roadmap for how to either justify or remove them.
+**Scope decision:** keep "Congestion Optimization" in the title. It is delivered as **route recommendation**: every road segment's cost is its length divided by the speed predicted for the moment you reach it, and Dijkstra's algorithm picks the lowest-cost route. Congestion alerts (predicted speed vs. free-flow speed) come from the same forecasts.
+
+Visual blueprint of the whole system and its data: https://claude.ai/artifact/JbCUopciFya99bA96hnMvn
 
 ## Decomposition of the title
 

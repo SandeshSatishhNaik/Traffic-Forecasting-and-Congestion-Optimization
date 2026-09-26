@@ -136,7 +136,7 @@ All are freeway data. If the project must use a specific local city, expect to s
 
 ## Open decisions
 
-- [ ] Zone definition: A / B / C (recommended: A)
-- [ ] Keep "Congestion Optimization" in the title (build the Stage 7 extension) or rename
+- [ ] Zone definition: A / B / C (recommended: A; the visual blueprint assumes A)
+- [x] Keep "Congestion Optimization" in the title — **decided: keep it, implemented as route recommendation** (road cost = length ÷ predicted speed when you reach it; Dijkstra on predicted travel time)
 - [ ] Target region: public benchmark only, or a specific city
 - [ ] Timeline, team split, compute (laptop / Colab / GPU)
