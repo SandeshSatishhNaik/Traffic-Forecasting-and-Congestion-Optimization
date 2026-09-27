@@ -1,10 +1,10 @@
 # Bengaluru traffic collector
 
-No sensors, no manual work. GitHub runs `collect.py` every 30 minutes on its own servers. Each run asks TomTom for the current speed on 10 road segments (TomTom gets these from GPS traces of phones and cars) and asks Open-Meteo for the weather. The rows are saved to the `bengaluru-data` branch. After 4–6 weeks you have a time series of about 1,400 readings per segment.
+No sensors, no manual work. GitHub runs `collect.py` every 15 minutes during the day (06:37–21:22 IST) on its own servers. Each run asks TomTom for the current speed on 10 road segments (TomTom gets these from GPS traces of phones and cars) and asks Open-Meteo for the weather. The rows are saved to the `bengaluru-data` branch. After 4–6 weeks you have a time series of about 1,700–2,500 readings per segment.
 
 ## Setup (about 15 minutes, once)
 
-1. **Decide on repository visibility.** This repository is currently **public**, so the collected data would be public too. TomTom's terms probably do not allow republishing their traffic data; read them. The safe choice is **Settings → General → Danger Zone → Change visibility → Private**. On a free GitHub account, private repositories get 2,000 Actions minutes a month, and this collector uses about 1,500.
+1. **Decide on repository visibility.** This repository is currently **public**, so the collected data would be public too. TomTom's terms probably do not allow republishing their traffic data; read them. The safe choice is **Settings → General → Danger Zone → Change visibility → Private**. On a free GitHub account, private repositories get 2,000 Actions minutes a month, and this collector uses about 1,860 (60 runs a day, each billed as 1 minute), so avoid adding other scheduled workflows.
 2. **Get a free TomTom API key.** Sign up at <https://developer.tomtom.com>. No credit card is needed. Copy the API key from your dashboard.
 3. **Add the key to GitHub.** Repository **Settings → Secrets and variables → Actions → Secrets → New repository secret**. Name: `TOMTOM_API_KEY`, value: your key. Never paste the key into a file in the repository.
 4. **Test one run.** **Actions** tab → **Collect Bengaluru traffic** → **Run workflow**. After about a minute, a `bengaluru-data` branch appears with `data/tomtom_flow/<month>.csv`.
@@ -14,7 +14,7 @@ No sensors, no manual work. GitHub runs `collect.py` every 30 minutes on its own
 
 ## Budget
 
-10 segments × 48 runs a day × 31 days = 14,880 requests a month. The TomTom free tier is 20,000 Flow Segment requests a month. Before adding segments, check the total with:
+10 segments × 60 runs a day (every 15 min, 06:37–21:22 IST) × 31 days = 18,600 requests a month. The TomTom free tier is 20,000 Flow Segment requests a month, leaving room for about 140 manual test runs. Collecting every 15 minutes around the clock would need 29,760, so nights are skipped. Before adding segments, check the total with:
 
 ```
 TOMTOM_API_KEY=your_key python collector/collect.py --check
@@ -30,10 +30,10 @@ The Outer Ring Road is a divided road, so each point measures one direction of t
 
 ## Run it somewhere else
 
-Any always-on computer with Python 3.8+ works:
+Any always-on computer with Python 3.8+ works (this crontab line assumes the computer clock is in IST: 60 runs a day, 07:07–21:52):
 
 ```
-*/30 * * * *  cd /path/to/repo && TOMTOM_API_KEY=... python3 collector/collect.py --out data
+7,22,37,52 7-21 * * *  cd /path/to/repo && TOMTOM_API_KEY=... python3 collector/collect.py --out data
 ```
 
 Test without a key or network: `python collector/collect.py --dry-run --out /tmp/test`.

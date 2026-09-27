@@ -1,7 +1,10 @@
 name: Collect Bengaluru traffic
 
-# Runs collector/collect.py every 30 minutes and commits the new rows to the
-# `bengaluru-data` branch, keeping data out of the code branch.
+# Runs collector/collect.py every 15 minutes during the day (06:37-21:22 IST)
+# and commits the new rows to the `bengaluru-data` branch, keeping data out of
+# the code branch. 10 segments x 60 runs/day x 31 days = 18,600 TomTom requests
+# a month, inside the 20,000 free tier. Nights are skipped: traffic is at
+# free-flow speed then, and 24-hour 15-minute polling would exceed the quota.
 #
 # Off by default. To turn it on:
 #   1. Settings > Secrets and variables > Actions > Secrets: add TOMTOM_API_KEY
@@ -10,7 +13,7 @@ name: Collect Bengaluru traffic
 
 on:
   schedule:
-    - cron: "7,37 * * * *"  # every 30 min, away from the busy top of the hour
+    - cron: "7,22,37,52 1-15 * * *"  # UTC; = every 15 min, 06:37-21:22 IST
   workflow_dispatch:
 
 permissions:
