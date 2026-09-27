@@ -1,6 +1,6 @@
 # Bengaluru traffic collector
 
-No sensors, no manual work. GitHub runs `collect.py` every 30 minutes on its own servers. Each run asks TomTom for the current speed on 11 road segments (TomTom gets these from GPS traces of phones and cars) and asks Open-Meteo for the weather. The rows are saved to the `bengaluru-data` branch. After 4–6 weeks you have a time series of about 1,400 readings per segment.
+No sensors, no manual work. GitHub runs `collect.py` every 30 minutes on its own servers. Each run asks TomTom for the current speed on 10 road segments (TomTom gets these from GPS traces of phones and cars) and asks Open-Meteo for the weather. The rows are saved to the `bengaluru-data` branch. After 4–6 weeks you have a time series of about 1,400 readings per segment.
 
 ## Setup (about 15 minutes, once)
 
@@ -8,13 +8,13 @@ No sensors, no manual work. GitHub runs `collect.py` every 30 minutes on its own
 2. **Get a free TomTom API key.** Sign up at <https://developer.tomtom.com>. No credit card is needed. Copy the API key from your dashboard.
 3. **Add the key to GitHub.** Repository **Settings → Secrets and variables → Actions → Secrets → New repository secret**. Name: `TOMTOM_API_KEY`, value: your key. Never paste the key into a file in the repository.
 4. **Test one run.** **Actions** tab → **Collect Bengaluru traffic** → **Run workflow**. After about a minute, a `bengaluru-data` branch appears with `data/tomtom_flow/<month>.csv`.
-5. **Check the roads matched correctly.** Open that CSV. Every row should have `status` = `ok`. The `frc` column should be `FRC0`–`FRC3` (major roads). If a row shows `FRC5` or higher, that point snapped to a side street: move its coordinates in `segments.csv` onto the main road.
+5. **Check the roads matched correctly.** Open that CSV. Every row should have `status` = `ok`. The `frc` column should be `FRC0`–`FRC3` (major roads). If a row shows `FRC5` or higher, that point snapped to a side street: move its coordinates in `segments.csv` onto the main road. Also check that no two rows have the same `seg_start_*`/`seg_end_*` coordinates. TomTom road segments can be several kilometres long, so two points on one road can match the same segment and waste requests (the first run found this for Old Airport Road and Varthur Road).
 6. **Switch on the schedule.** Same Settings page → **Variables → New repository variable**. Name: `COLLECT_ENABLED`, value: `true`.
 7. **Leave it running.** Once a week, open the Actions tab and check for red (failed) runs.
 
 ## Budget
 
-11 segments × 48 runs a day × 31 days = 16,368 requests a month. The TomTom free tier is 20,000 Flow Segment requests a month. Before adding segments, check the total with:
+10 segments × 48 runs a day × 31 days = 14,880 requests a month. The TomTom free tier is 20,000 Flow Segment requests a month. Before adding segments, check the total with:
 
 ```
 TOMTOM_API_KEY=your_key python collector/collect.py --check
