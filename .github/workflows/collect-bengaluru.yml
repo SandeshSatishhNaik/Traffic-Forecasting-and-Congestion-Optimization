@@ -1,23 +1,33 @@
 name: Collect Bengaluru traffic
 
-# Runs collector/collect.py every 15 minutes during the day (06:37-21:22 IST)
-# and commits the new rows to the `bengaluru-data` branch, keeping data out of
-# the code branch. 10 segments x 60 runs/day x 31 days = 18,600 TomTom requests
-# a month, inside the 20,000 free tier. Nights are skipped: traffic is at
-# free-flow speed then, and 24-hour 15-minute polling would exceed the quota.
+# Collects TomTom speeds for 10 Bengaluru roads every 15 minutes, 06:37-21:22 IST,
+# and commits the rows to the `bengaluru-data` branch (see collector/README.md).
 #
-# Off by default. To turn it on:
-#   1. Settings > Secrets and variables > Actions > Secrets: add TOMTOM_API_KEY
-#   2. Same page > Variables: add COLLECT_ENABLED = true
-# "Run workflow" on the Actions tab runs it once even while it is off.
+# GitHub's cron scheduler does not reliably start scheduled runs on new
+# repositories, so each run keeps its own 15-minute timer for about 5.5 hours
+# (collector/loop.sh) and then starts the next run itself. The schedule below
+# is only a backup that restarts the chain if it ever stops.
+#
+# To stop collecting: Settings > Secrets and variables > Actions > Variables,
+# set COLLECT_ENABLED to false. The chain ends when the current run finishes
+# (cancel it on the Actions tab to stop immediately).
+#
+# Runs are free on public repositories. On a private repository this chain
+# would use far more than the free 2,000 Actions minutes a month.
 
 on:
   schedule:
-    - cron: "7,22,37,52 1-15 * * *"  # times are UTC: every 15 min from 06:37 to 21:22 IST
+    - cron: "7,22,37,52 1-15 * * *"  # backup only; times are UTC (06:37-21:22 IST)
   workflow_dispatch:
+    inputs:
+      chained:
+        description: "Started by the previous run (skip the immediate collection)"
+        type: boolean
+        default: false
 
 permissions:
-  contents: write
+  contents: write  # push data to the bengaluru-data branch
+  actions: write   # start the next run of this workflow
 
 concurrency:
   group: collect-bengaluru
@@ -25,37 +35,16 @@ concurrency:
 
 jobs:
   collect:
-    if: github.event_name == 'workflow_dispatch' || vars.COLLECT_ENABLED == 'true'
+    if: vars.COLLECT_ENABLED == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    env:
-      DATA_BRANCH: bengaluru-data
+    timeout-minutes: 350
     steps:
       - uses: actions/checkout@v5
 
-      - name: Check out the data branch
-        run: |
-          if git ls-remote --exit-code --heads origin "$DATA_BRANCH" > /dev/null; then
-            git fetch --depth=1 origin "$DATA_BRANCH"
-            git worktree add -B "$DATA_BRANCH" data-branch FETCH_HEAD
-          else
-            git worktree add --detach data-branch
-            cd data-branch
-            git checkout --orphan "$DATA_BRANCH"
-            git rm -rfq . || true
-          fi
-
-      - name: Collect
+      - name: Collect every 15 minutes, then start the next run
         env:
           TOMTOM_API_KEY: ${{ secrets.TOMTOM_API_KEY }}
-        run: python3 collector/collect.py --segments collector/segments.csv --out data-branch/data
-
-      - name: Commit and push
-        working-directory: data-branch
-        run: |
-          git config user.name "traffic-collector"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          if git diff --cached --quiet; then exit 0; fi
-          git commit -q -m "Collect $(date -u +%Y-%m-%dT%H:%MZ)"
-          git push -q origin "HEAD:$DATA_BRANCH"
+          GH_TOKEN: ${{ github.token }}
+          LOOP_MINUTES: "330"
+          COLLECT_NOW: ${{ github.event_name == 'workflow_dispatch' && !inputs.chained }}
+        run: bash collector/loop.sh

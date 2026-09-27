@@ -4,13 +4,20 @@ No sensors, no manual work. GitHub runs `collect.py` every 15 minutes during the
 
 ## Setup (about 15 minutes, once)
 
-1. **Decide on repository visibility.** This repository is currently **public**, so the collected data would be public too. TomTom's terms probably do not allow republishing their traffic data; read them. The safe choice is **Settings → General → Danger Zone → Change visibility → Private**. On a free GitHub account, private repositories get 2,000 Actions minutes a month, and this collector uses about 1,860 (60 runs a day, each billed as 1 minute), so avoid adding other scheduled workflows.
+1. **Repository visibility.** GitHub Actions minutes are free and unlimited on public repositories, and the collection chain below needs that: each run stays active for about 5.5 hours. On a private repository on a free account (2,000 minutes a month) the chain would run out of minutes in about two days. The trade-off is that on a public repository the collected TomTom data is public too; check TomTom's terms before publishing results.
 2. **Get a free TomTom API key.** Sign up at <https://developer.tomtom.com>. No credit card is needed. Copy the API key from your dashboard.
 3. **Add the key to GitHub.** Repository **Settings → Secrets and variables → Actions → Secrets → New repository secret**. Name: `TOMTOM_API_KEY`, value: your key. Never paste the key into a file in the repository.
 4. **Test one run.** **Actions** tab → **Collect Bengaluru traffic** → **Run workflow**. After about a minute, a `bengaluru-data` branch appears with `data/tomtom_flow/<month>.csv`.
 5. **Check the roads matched correctly.** Open that CSV. Every row should have `status` = `ok`. The `frc` column should be `FRC0`–`FRC3` (major roads). If a row shows `FRC5` or higher, that point snapped to a side street: move its coordinates in `segments.csv` onto the main road. Also check that no two rows have the same `seg_start_*`/`seg_end_*` coordinates. TomTom road segments can be several kilometres long, so two points on one road can match the same segment and waste requests (the first run found this for Old Airport Road and Varthur Road).
-6. **Switch on the schedule.** Same Settings page → **Variables → New repository variable**. Name: `COLLECT_ENABLED`, value: `true`.
+6. **Switch collection on.** Same Settings page → **Variables → New repository variable**. Name: `COLLECT_ENABLED`, value: `true`. Then press **Run workflow** once to start the chain.
 7. **Leave it running.** Once a week, open the Actions tab and check for red (failed) runs.
+
+## How the chain works
+
+GitHub's cron scheduler does not reliably start scheduled runs on new repositories (on this one it never fired). So `loop.sh` keeps its own clock: one workflow run collects at :07, :22, :37 and :52 past every hour (UTC; 06:37–21:22 IST), stays alive for about 5.5 hours, and just before it ends starts the next run of the same workflow. The chain never needs a human, and the cron entry in the workflow is only a backup that restarts it if it ever breaks.
+
+- **Stop:** set `COLLECT_ENABLED` to `false`. The next run is skipped, so the chain ends when the current run finishes. Cancel the running run on the Actions tab to stop immediately.
+- **Restart:** set it back to `true` and press **Run workflow**.
 
 ## Budget
 
