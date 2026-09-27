@@ -6,7 +6,9 @@ name: Collect Bengaluru traffic
 # GitHub's cron scheduler does not reliably start scheduled runs on new
 # repositories, so each run keeps its own 15-minute timer for about 5.5 hours
 # (collector/loop.sh) and then starts the next run itself. The schedule below
-# is only a backup that restarts the chain if it ever stops.
+# is only a backup that restarts the chain if it ever stops. While the chain is
+# running, a scheduled run waits in the queue and is cancelled when the next
+# chained run starts; those cancelled runs are expected.
 #
 # To stop collecting: Settings > Secrets and variables > Actions > Variables,
 # set COLLECT_ENABLED to false. The chain ends when the current run finishes
@@ -17,7 +19,7 @@ name: Collect Bengaluru traffic
 
 on:
   schedule:
-    - cron: "7,22,37,52 1-15 * * *"  # backup only; times are UTC (06:37-21:22 IST)
+    - cron: "7 1-15/3 * * *"  # backup only, every 3 hours; UTC (06:37 IST onwards)
   workflow_dispatch:
     inputs:
       chained:
