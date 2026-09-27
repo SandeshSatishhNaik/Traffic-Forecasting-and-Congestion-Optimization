@@ -1,0 +1,12 @@
+segment_id,name,road,lat,lon,osm_way_id
+orr_hsr,ORR near HSR Layout (Silk Board side),Outer Ring Road,12.9164439,77.6399669,380980313
+orr_iblur,ORR at Iblur,Outer Ring Road,12.9231101,77.6702694,609637808
+orr_bellandur,ORR at Bellandur,Outer Ring Road,12.9292128,77.6831094,377104670
+orr_marathahalli,ORR near Marathahalli bridge,Outer Ring Road,12.9529429,77.7001793,1085142956
+orr_doddanekundi,ORR at Doddanekundi,Outer Ring Road,12.9750108,77.6974233,1188322174
+orr_mahadevapura,ORR at Mahadevapura,Outer Ring Road,12.9863477,77.6906140,376784380
+hosur_bommanahalli,Hosur Road at Bommanahalli,Hosur Road,12.9131197,77.6251008,1155963376
+sarjapur_agara,Sarjapur Road near Agara,Sarjapur Road,12.9244884,77.6451418,631197942
+old_airport_konena,HAL Old Airport Road at Konena Agrahara,HAL Old Airport Road,12.9589276,77.6633594,431532857
+varthur_marathahalli,Varthur Road at Marathahalli,Varthur Road,12.9563580,77.6952414,1316838746
+varthur_kundalahalli,Varthur Road at Kundalahalli,Varthur Road,12.9561094,77.7295768,122424488
