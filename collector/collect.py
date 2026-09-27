@@ -2,9 +2,9 @@
 """Collect Bengaluru traffic speeds (TomTom Traffic Flow) and weather (Open-Meteo).
 
 Each run queries every segment in segments.csv once and appends one row per
-segment to a monthly CSV. Run it every 15 minutes during the day (the GitHub
-Actions workflow in .github/workflows/collect-bengaluru.yml does this) to build
-a time series.
+segment to a monthly CSV. collector/loop.sh runs it 56 times a day, around the
+clock (every 15 min in rush hours, every 30 min midday, hourly at night), to
+build a time series.
 
 Standard library only, so it runs anywhere Python 3.8+ is installed.
 
@@ -46,8 +46,9 @@ DATA_README = """# Bengaluru traffic data
 
 Collected automatically by `collector/collect.py` (see the repository's default branch).
 
-- `tomtom_flow/YYYY-MM.csv`: one row per road segment per run (every 15 min,
-  06:37-21:22 IST; no readings at night).
+- `tomtom_flow/YYYY-MM.csv`: one row per road segment per run, around the clock:
+  every 15 min 07:07-11:07 and 16:07-21:07 IST, every 30 min midday, hourly at
+  night.
   Speeds in km/h, travel times in seconds. `status` is `ok` or the error for that
   request, so gaps are visible. `frc` is TomTom's road class (FRC0 = motorway ...).
   `seg_*` columns are the ends of the road segment TomTom matched to the point.
@@ -177,7 +178,7 @@ def main():
     ap.add_argument("--segments", default=os.path.join(here, "segments.csv"))
     ap.add_argument("--out", default="data", help="output folder (created if missing)")
     ap.add_argument("--zoom", type=int, default=10, help="TomTom zoom level used to match the road segment")
-    ap.add_argument("--runs-per-day", type=int, default=60, help="only used for the quota estimate")
+    ap.add_argument("--runs-per-day", type=int, default=56, help="only used for the quota estimate")
     ap.add_argument("--check", action="store_true", help="query each segment once, print a report, write nothing")
     ap.add_argument("--dry-run", action="store_true", help="use fake responses, no network, no API key needed")
     args = ap.parse_args()

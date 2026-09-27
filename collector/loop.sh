@@ -2,9 +2,10 @@
 # Keeps collection running without GitHub's cron scheduler, which does not
 # reliably start scheduled runs on new repositories.
 #
-# One workflow run collects at every 15-minute slot (:07, :22, :37, :52 UTC)
-# inside the daily window 06:37-21:22 IST, for up to LOOP_MINUTES. Before it
-# ends it starts the next run of the same workflow, so the chain continues.
+# One workflow run wakes at every 15-minute slot (:07, :22, :37, :52 past the
+# hour, IST) for up to LOOP_MINUTES and collects when due_now says so. Before
+# it ends it starts the next run of the same workflow, so the chain continues
+# around the clock.
 #
 # Env: TOMTOM_API_KEY (required), GH_TOKEN (to start the next run),
 #      LOOP_MINUTES (default 330), COLLECT_NOW (true = collect immediately),
@@ -29,11 +30,20 @@ setup_data_branch() {
   git -C data-branch config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 }
 
-# 01:07-15:52 UTC = 06:37-21:22 IST
-in_window() {
-  local hm
-  hm=$(date -u +%H%M)
-  (( 10#$hm >= 107 && 10#$hm <= 1552 ))
+# 24/7 schedule, denser when traffic changes fastest (IST):
+#   07:07-11:07 and 16:07-21:07   every 15 min (rush hours)
+#   11:37-15:37                   every 30 min (midday)
+#   21:37-06:52                   every hour, at :07 (night and early morning)
+# = 56 readings a day; x 10 roads x 31 days = 17,360 TomTom requests a month,
+# inside the 20,000 free tier. Every 15 min around the clock would need 29,760.
+due_now() {
+  local hm m
+  hm=$(TZ=Asia/Kolkata date +%H%M)
+  m=${hm:2:2}
+  hm=$((10#$hm))
+  if (( (hm >= 707 && hm <= 1107) || (hm >= 1607 && hm <= 2107) )); then return 0; fi
+  if (( hm > 1107 && hm < 1607 )); then [[ $m == 07 || $m == 37 ]]; return; fi
+  [[ $m == 07 ]]
 }
 
 next_slot() {
@@ -72,7 +82,7 @@ while :; do
   (( slot > END )) && break
   wait_s=$(( slot - $(date -u +%s) ))
   (( wait_s > 0 )) && sleep "$wait_s"
-  if in_window; then collect_once; else echo "$(date -u +%H:%M) UTC: outside 06:37-21:22 IST, skipped"; fi
+  if due_now; then collect_once; else echo "$(TZ=Asia/Kolkata date +%H:%M) IST: not a collection slot, skipped"; fi
 done
 
 if [[ "${NO_CHAIN:-false}" == "true" ]]; then

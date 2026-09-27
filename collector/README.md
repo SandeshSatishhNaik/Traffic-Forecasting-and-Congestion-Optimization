@@ -1,6 +1,6 @@
 # Bengaluru traffic collector
 
-No sensors, no manual work. GitHub runs `collect.py` every 15 minutes during the day (06:37–21:22 IST) on its own servers. Each run asks TomTom for the current speed on 10 road segments (TomTom gets these from GPS traces of phones and cars) and asks Open-Meteo for the weather. The rows are saved to the `bengaluru-data` branch. After 4–6 weeks you have a time series of about 1,700–2,500 readings per segment.
+No sensors, no manual work. GitHub runs `collect.py` around the clock on its own servers: every 15 minutes in the morning and evening rush hours, every 30 minutes at midday, and hourly at night. Each run asks TomTom for the current speed on 10 road segments (TomTom gets these from GPS traces of phones and cars) and asks Open-Meteo for the weather. The rows are saved to the `bengaluru-data` branch. After 4–6 weeks you have a continuous time series of about 1,600–2,400 readings per segment.
 
 ## Setup (about 15 minutes, once)
 
@@ -14,14 +14,25 @@ No sensors, no manual work. GitHub runs `collect.py` every 15 minutes during the
 
 ## How the chain works
 
-GitHub's cron scheduler does not reliably start scheduled runs on new repositories (on this one it never fired). So `loop.sh` keeps its own clock: one workflow run collects at :07, :22, :37 and :52 past every hour (UTC; 06:37–21:22 IST), stays alive for about 5.5 hours, and just before it ends starts the next run of the same workflow. The chain never needs a human, and the cron entry in the workflow is only a backup that restarts it if it ever breaks.
+GitHub's cron scheduler does not reliably start scheduled runs on new repositories (on this one it never fired). So `loop.sh` keeps its own clock: one workflow run wakes at :07, :22, :37 and :52 past every hour, collects if that slot is on the schedule below, stays alive for about 5.5 hours, and just before it ends starts the next run of the same workflow. The chain never needs a human, and the cron entry in the workflow is only a backup that restarts it if it ever breaks.
 
 - **Stop:** set `COLLECT_ENABLED` to `false`. The next run is skipped, so the chain ends when the current run finishes. Cancel the running run on the Actions tab to stop immediately.
 - **Restart:** set it back to `true` and press **Run workflow**.
 
-## Budget
+## Schedule and budget
 
-10 segments × 60 runs a day (every 15 min, 06:37–21:22 IST) × 31 days = 18,600 requests a month. The TomTom free tier is 20,000 Flow Segment requests a month, leaving room for about 140 manual test runs. Collecting every 15 minutes around the clock would need 29,760, so nights are skipped. Before adding segments, check the total with:
+Collection runs 24/7, densest when traffic changes fastest (times in IST):
+
+| Time | Interval | Readings a day |
+|---|---|---|
+| 07:07–11:07 (morning rush) | every 15 min | 17 |
+| 11:37–15:37 (midday) | every 30 min | 9 |
+| 16:07–21:07 (evening rush) | every 15 min | 21 |
+| 22:07–06:07 (night) | every hour | 9 |
+
+56 readings a day × 10 roads × 31 days = 17,360 requests a month. The TomTom free tier is 20,000 Flow Segment requests a month, leaving room for about 260 manual test runs. Every 15 minutes around the clock would need 29,760, which is why midday and night are sparser; traffic changes slowly then. For modelling, resample to a regular 15-minute grid and interpolate the sparse hours.
+
+Before adding segments, check the total with:
 
 ```
 TOMTOM_API_KEY=your_key python collector/collect.py --check
@@ -37,10 +48,12 @@ The Outer Ring Road is a divided road, so each point measures one direction of t
 
 ## Run it somewhere else
 
-Any always-on computer with Python 3.8+ works (this crontab line assumes the computer clock is in IST: 60 runs a day, 07:07–21:52):
+Any always-on computer with Python 3.8+ and git works: from a clone of the repository run
 
 ```
-7,22,37,52 7-21 * * *  cd /path/to/repo && TOMTOM_API_KEY=... python3 collector/collect.py --out data
+TOMTOM_API_KEY=... LOOP_MINUTES=100000 NO_CHAIN=true bash collector/loop.sh
 ```
+
+It keeps collecting on the same schedule until stopped.
 
 Test without a key or network: `python collector/collect.py --dry-run --out /tmp/test`.
