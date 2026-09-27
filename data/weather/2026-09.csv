@@ -1,0 +1,2 @@
+timestamp_utc,timestamp_ist,status,temperature_c,precipitation_mm,rain_mm,weather_code,cloud_cover_pct
+2026-09-27T06:31:36Z,2026-09-27 12:01:36,ok,29.7,0.0,0.0,0,11
