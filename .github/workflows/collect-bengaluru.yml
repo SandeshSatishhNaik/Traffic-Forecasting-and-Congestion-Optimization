@@ -28,7 +28,7 @@ jobs:
     env:
       DATA_BRANCH: bengaluru-data
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Check out the data branch
         run: |
