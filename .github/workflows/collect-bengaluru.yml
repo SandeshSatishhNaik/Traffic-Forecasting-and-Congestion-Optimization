@@ -1,10 +1,12 @@
 name: Collect Bengaluru traffic
 
-# Collects TomTom speeds for 10 Bengaluru roads every 15 minutes, 06:37-21:22 IST,
-# and commits the rows to the `bengaluru-data` branch (see collector/README.md).
+# Collects TomTom speeds for 10 Bengaluru roads around the clock and commits the
+# rows to the `bengaluru-data` branch (see collector/README.md). Every 15 min in
+# the rush hours (07:07-11:07 and 16:07-21:07 IST), every 30 min at midday,
+# hourly at night: 56 readings a day, inside TomTom's free tier.
 #
 # GitHub's cron scheduler does not reliably start scheduled runs on new
-# repositories, so each run keeps its own 15-minute timer for about 5.5 hours
+# repositories, so each run keeps its own timer for about 5.5 hours
 # (collector/loop.sh) and then starts the next run itself. The schedule below
 # is only a backup that restarts the chain if it ever stops. While the chain is
 # running, a scheduled run waits in the queue and is cancelled when the next
@@ -19,7 +21,7 @@ name: Collect Bengaluru traffic
 
 on:
   schedule:
-    - cron: "7 1-15/3 * * *"  # backup only, every 3 hours; UTC (06:37 IST onwards)
+    - cron: "7 */3 * * *"  # backup only, every 3 hours (UTC)
   workflow_dispatch:
     inputs:
       chained:
@@ -43,7 +45,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Collect every 15 minutes, then start the next run
+      - name: Collect on schedule, then start the next run
         env:
           TOMTOM_API_KEY: ${{ secrets.TOMTOM_API_KEY }}
           GH_TOKEN: ${{ github.token }}
