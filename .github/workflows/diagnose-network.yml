@@ -1,0 +1,27 @@
+name: Diagnose road network
+
+# One-off diagnostics for the Bengaluru road network (see collector/diagnose.py).
+# Runs only when started by hand. Uses about 100 TomTom requests and prints
+# aggregate counts to the log. Separate from the collection chain.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: diagnose-network
+  cancel-in-progress: false
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Run diagnostics
+        env:
+          TOMTOM_API_KEY: ${{ secrets.TOMTOM_API_KEY }}
+        run: python3 collector/diagnose.py
