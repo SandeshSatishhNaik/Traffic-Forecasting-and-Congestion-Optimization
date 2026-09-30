@@ -305,6 +305,8 @@ def main():
     ap.add_argument("--zoom", type=int, default=10, help="TomTom zoom level used to match the road segment")
     ap.add_argument("--runs-per-day", type=int, default=56, help="only used for the quota estimate")
     ap.add_argument("--check", action="store_true", help="query each segment once, print a report, write nothing")
+    ap.add_argument("--tiers", default="", help="only read segments of these tiers (comma list, e.g. core,context); "
+                    "segments.csv has a tier column")
     ap.add_argument("--incidents", action="store_true", help="also poll TomTom traffic incidents in the segments' area")
     ap.add_argument("--incidents-check", action="store_true", help="test the incident request, print field names only")
     ap.add_argument("--dry-run", action="store_true", help="use fake responses, no network, no API key needed")
@@ -314,7 +316,12 @@ def main():
     if not key and not args.dry_run:
         sys.exit("Set the TOMTOM_API_KEY environment variable (free key from developer.tomtom.com).")
 
-    segments = read_segments(args.segments)
+    all_segments = segments = read_segments(args.segments)
+    if args.tiers and not args.check:
+        wanted = set(args.tiers.split(","))
+        segments = [s for s in segments if s.get("tier", "core") in wanted]
+        if not segments:
+            sys.exit(f"No segments in tier(s) {args.tiers}.")
     if args.incidents_check:
         incidents_check(segments, key)
         return
@@ -331,13 +338,13 @@ def main():
     append_rows(os.path.join(args.out, "tomtom_flow", f"{month}.csv"), FLOW_FIELDS,
                 [{**stamp, "segment_id": s["segment_id"], **r} for s, r in zip(segments, flow)])
 
-    lat = sum(s["lat"] for s in segments) / len(segments)
-    lon = sum(s["lon"] for s in segments) / len(segments)
+    lat = sum(s["lat"] for s in all_segments) / len(all_segments)
+    lon = sum(s["lon"] for s in all_segments) / len(all_segments)
     append_rows(os.path.join(args.out, "weather", f"{month}.csv"), WEATHER_FIELDS,
                 [{**stamp, **collect_weather(lat, lon, args.dry_run)}])
 
     if args.incidents:
-        st, n_now, n_events = log_incidents(args.out, month, stamp, bbox_of_segments(segments), key, args.dry_run)
+        st, n_now, n_events = log_incidents(args.out, month, stamp, bbox_of_segments(all_segments), key, args.dry_run)
         print(f"incidents: {st}, {n_now} active, {n_events} new/changed/ended")
 
     readme = os.path.join(args.out, "README.md")
