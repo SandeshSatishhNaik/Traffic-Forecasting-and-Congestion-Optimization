@@ -25,3 +25,8 @@ jobs:
         env:
           TOMTOM_API_KEY: ${{ secrets.TOMTOM_API_KEY }}
         run: python3 collector/diagnose.py
+
+      - name: Check the incident request used by the collector (field names only)
+        env:
+          TOMTOM_API_KEY: ${{ secrets.TOMTOM_API_KEY }}
+        run: python3 collector/collect.py --incidents-check
