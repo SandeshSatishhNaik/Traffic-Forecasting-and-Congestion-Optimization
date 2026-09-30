@@ -8,7 +8,7 @@ This note holds summary numbers only, not raw TomTom results (see section 4 for 
 
 ---
 
-## 1. What the 10 "roads" really are
+## 1. What the first 10 "roads" really were
 
 Each collected road is one **TomTom road stretch**: the piece of road TomTom's Flow Segment service matched to the point we asked about. TomTom returns the stretch's shape, so its length is the length of that polyline (section 8).
 
@@ -21,7 +21,7 @@ Each collected road is one **TomTom road stretch**: the piece of road TomTom's F
 | orr_doddanekundi | 7.4 km | north | ORR northbound, runs beside the two southbound segments |
 | orr_mahadevapura | 4.3 km | south-east | ends exactly where orr_marathahalli starts |
 | hosur_bommanahalli | 0.65 km | north-west | |
-| sarjapur_agara | 1.0 km | north-east | starts about 10 m from where orr_hsr starts (same junction) |
+| sarjapur_agara | 1.0 km | north-east | **not Sarjapur Road**: TomTom matched the ORR eastbound near Agara (correction of 30 Sep, section 9); starts about 10 m from where orr_hsr starts, so the two are the two carriageways of the ORR at one junction |
 | old_airport_konena | 14.7 km | west | Varthur Rd / Old Airport Rd, inbound |
 | varthur_kundalahalli | 14.6 km | east | the same 15 km road, outbound |
 
@@ -32,8 +32,8 @@ Findings from the stored data:
 - **Lengths differ about 22 times** (0.65 km to 14.65 km). One number for a 14 km stretch averages many junctions and signals together: OpenStreetMap shows 64 traffic signals along the westbound one and 63 along the eastbound one.
 - **Two of the ten are the same road in opposite directions** (Old Airport Rd and Varthur Rd).
 - **The ORR points alternate direction.** Iblur, Bellandur and Doddanekundi are outbound; HSR, Marathahalli and Mahadevapura are inbound. A road divided into two carriageways is two separate roads for traffic purposes and must be two graph nodes.
-- **Six islands** (groups of stretches that touch each other; the two directions of the 15 km road are counted as one): (1) HSR + Sarjapur, (2) Iblur to Bellandur, (3) Mahadevapura to Marathahalli, (4) Doddanekundi, which runs beside island 3 the other way, (5) Hosur Rd, (6) Old Airport + Varthur.
-- **Only three real links exist in the data:** Iblur to Bellandur, Mahadevapura to Marathahalli, and HSR + Sarjapur at one junction.
+- **Six islands** (groups of stretches that touch each other; the two directions of the 15 km road are counted as one): (1) HSR + "Sarjapur" (the two ORR carriageways at one junction), (2) Iblur to Bellandur, (3) Mahadevapura to Marathahalli, (4) Doddanekundi, which runs beside island 3 the other way, (5) Hosur Rd, (6) Old Airport + Varthur.
+- **Only three real links exist in the data:** Iblur to Bellandur, Mahadevapura to Marathahalli, and HSR + "Sarjapur" at one junction (opposite carriageways of the ORR).
 - **Gaps where nobody measures anything.** Straight-line distances between neighbouring islands: 0.16 km (Doddanekundi end to Mahadevapura start), 0.55 km (Marathahalli end to Doddanekundi start), 0.9 km (Bellandur end to Marathahalli end), 1.2 km (HSR end to Hosur Rd end), 2.7 km (HSR start to Iblur start).
 - The collector stores only start and end coordinates per stretch, not the road's shape, and nothing about junctions, signals, lanes or road type.
 

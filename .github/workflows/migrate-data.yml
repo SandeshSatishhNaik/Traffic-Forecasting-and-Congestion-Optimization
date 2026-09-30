@@ -9,6 +9,10 @@ name: Move data to the private repository
 on:
   workflow_dispatch:
     inputs:
+      status_only:
+        description: "Only list what the private repository holds (health check); copy and delete nothing"
+        type: boolean
+        default: false
       delete_public_branch:
         description: "Delete the public bengaluru-data branch after the copy is verified"
         type: boolean
@@ -29,6 +33,7 @@ jobs:
       - uses: actions/checkout@v5
 
       - uses: actions/checkout@v5
+        continue-on-error: true  # the branch is gone after the move; a status check still works
         with:
           ref: bengaluru-data
           path: public-data
@@ -37,4 +42,5 @@ jobs:
         env:
           DATA_REPO_TOKEN: ${{ secrets.DATA_REPO_TOKEN }}
           DELETE_PUBLIC_BRANCH: ${{ inputs.delete_public_branch }}
+          STATUS_ONLY: ${{ inputs.status_only }}
         run: bash collector/migrate_to_private.sh

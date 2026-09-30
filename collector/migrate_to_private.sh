@@ -11,6 +11,7 @@
 # Env: DATA_REPO_TOKEN (required), DATA_REPO (default SandeshSatishhNaik/traffic-data-private),
 #      PUBLIC_DATA_DIR (checkout of the bengaluru-data branch, default public-data),
 #      DELETE_PUBLIC_BRANCH (true = delete it after the copy is verified),
+#      STATUS_ONLY (true = only list what the private repository holds),
 #      MIN_AGE_MINUTES (default 20: refuse to delete a branch written to more recently),
 #      DATA_REPO_URL (override, for tests), DATA_BRANCH (default bengaluru-data).
 set -euo pipefail
@@ -23,6 +24,17 @@ DATA_BRANCH=${DATA_BRANCH:-bengaluru-data}
 export GIT_TERMINAL_PROMPT=0
 
 redact() { sed -E 's#(https://)[^@/ ]+@#\1***@#g'; }
+
+if [[ "${STATUS_ONLY:-false}" == "true" ]]; then
+  # Health check: what is in the private repository (names and line counts, no values).
+  rm -rf private-data
+  git clone -q "$DATA_REPO_URL" private-data 2>&1 | redact
+  echo "Latest commits in the private repository:"
+  git -C private-data log --format='  %h %cd %s' --date=iso -5
+  echo "Files:"
+  (cd private-data && find data network -type f 2>/dev/null | sort | while read -r f; do echo "  $f: $(wc -l < "$f") lines"; done)
+  exit 0
+fi
 
 [[ -d "$PUBLIC_DATA_DIR/data" ]] || { echo "No data folder in $PUBLIC_DATA_DIR."; exit 1; }
 last_public=$(git -C "$PUBLIC_DATA_DIR" log -1 --format=%ct)
