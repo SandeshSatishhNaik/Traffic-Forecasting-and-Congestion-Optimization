@@ -1,11 +1,22 @@
-segment_id,name,road,lat,lon,osm_way_id
-orr_hsr,ORR near HSR Layout (Silk Board side),Outer Ring Road,12.9164439,77.6399669,380980313
-orr_iblur,ORR at Iblur,Outer Ring Road,12.9231101,77.6702694,609637808
-orr_bellandur,ORR at Bellandur,Outer Ring Road,12.9292128,77.6831094,377104670
-orr_marathahalli,ORR near Marathahalli bridge,Outer Ring Road,12.9529429,77.7001793,1085142956
-orr_doddanekundi,ORR at Doddanekundi,Outer Ring Road,12.9750108,77.6974233,1188322174
-orr_mahadevapura,ORR at Mahadevapura,Outer Ring Road,12.9863477,77.6906140,376784380
-hosur_bommanahalli,Hosur Road at Bommanahalli,Hosur Road,12.9131197,77.6251008,1155963376
-sarjapur_agara,Sarjapur Road near Agara,Sarjapur Road,12.9244884,77.6451418,631197942
-old_airport_konena,HAL Old Airport Road at Konena Agrahara,HAL Old Airport Road,12.9589276,77.6633594,431532857
-varthur_kundalahalli,Varthur Road at Kundalahalli,Varthur Road,12.9561094,77.7295768,122424488
+segment_id,name,road,lat,lon,osm_way_id,route,tier,seq,length_km,frc
+orr_ccw_01,Outer Ring Road (orr_ccw #1),Outer Ring Road,12.916386,77.616222,1392543572,orr_ccw,core,1,4.13,FRC2
+orr_ccw_02,Outer Ring Road (orr_ccw #2),Outer Ring Road,12.915982,77.638071,152582633,orr_ccw,core,2,0.687,FRC2
+orr_ccw_03,Outer Ring Road (orr_ccw #3),Outer Ring Road,12.920856,77.643835,377125912,orr_ccw,core,3,1.024,FRC1
+orr_ccw_04,Outer Ring Road (orr_ccw #4),Outer Ring Road,12.923218,77.656534,377105485,orr_ccw,core,4,2.064,FRC1
+orr_iblur,Outer Ring Road (orr_ccw #5),Outer Ring Road,12.924567,77.673557,609637808,orr_ccw,core,5,1.974,FRC1
+orr_bellandur,Outer Ring Road (orr_ccw #6),Outer Ring Road,12.929922,77.684641,377104670,orr_ccw,core,6,0.708,FRC1
+orr_ccw_07,Outer Ring Road (orr_ccw #7),Outer Ring Road,12.936347,77.692017,377103305,orr_ccw,core,7,1.44,FRC1
+orr_doddanekundi,Outer Ring Road (orr_ccw #8),Outer Ring Road,12.972752,77.698791,677326078,orr_ccw,core,8,7.378,FRC1
+orr_mahadevapura,Outer Ring Road (orr_cw #1),Outer Ring Road,12.986253,77.690641,376784380,orr_cw,core,1,4.249,FRC1
+orr_marathahalli,Outer Ring Road (orr_cw #2),Outer Ring Road,12.952953,77.700167,1086240289,orr_cw,core,2,3.882,FRC1
+orr_cw_03,Outer Ring Road (orr_cw #3),Outer Ring Road,12.934563,77.690243,380929051,orr_cw,core,3,0.881,FRC1
+orr_cw_04,Outer Ring Road (orr_cw #4),Outer Ring Road,12.929831,77.684736,380929045,orr_cw,core,4,0.713,FRC1
+orr_cw_05,Outer Ring Road (orr_cw #5),Outer Ring Road,12.922138,77.668484,380929047,orr_cw,core,5,3.204,FRC1
+orr_cw_06,Outer Ring Road (orr_cw #6),Outer Ring Road,12.924370,77.650778,151676288,orr_cw,core,6,0.793,FRC2
+orr_cw_07,Outer Ring Road (orr_cw #7),Outer Ring Road,12.920761,77.643873,691997511,orr_cw,core,7,1.007,FRC1
+orr_hsr,Outer Ring Road (orr_cw #8),Outer Ring Road,12.915805,77.638120,380980312,orr_cw,core,8,0.711,FRC1
+orr_cw_09,Outer Ring Road (orr_cw #9),Outer Ring Road,12.916688,77.629632,380980308,orr_cw,core,9,1.141,FRC1
+hosur_bommanahalli,Hosur Road (hosur #1),Hosur Road,12.911752,77.625959,1155963376,hosur,context,1,0.654,FRC1
+hosur_02,Hosur Road (hosur #2),Hosur Road,12.945588,77.607164,1076239677,hosur,context,2,7.93,FRC2
+old_airport_konena,Varthur Road (old_airport #1),Varthur Road,12.955198,77.678343,101184763,old_airport,context,1,14.647,FRC2
+varthur_kundalahalli,Varthur Road (varthur #1),Varthur Road,12.955194,77.678520,122424488,varthur,context,1,14.618,FRC2

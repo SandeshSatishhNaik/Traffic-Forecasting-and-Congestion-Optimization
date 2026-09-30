@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Collect Bengaluru traffic speeds (TomTom Traffic Flow) and weather (Open-Meteo).
 
-Each run queries every segment in segments.csv once and appends one row per
-segment to a monthly CSV. collector/loop.sh runs it 56 times a day, around the
-clock (every 15 min in rush hours, every 30 min midday, hourly at night), to
-build a time series.
+Each run queries the segments in segments.csv that are due (all of them, or the
+tiers given with --tiers) once and appends one row per segment to a monthly CSV.
+collector/loop.sh runs it on a schedule, around the clock (every 15 min in the two
+rush-hour windows, less often around them and at night), to build a time series.
 
 Standard library only, so it runs anywhere Python 3.8+ is installed.
 
@@ -30,6 +30,8 @@ WEATHER_URL = "https://api.open-meteo.com/v1/forecast"
 INCIDENT_URL = "https://api.tomtom.com/traffic/services/5/incidentDetails"
 FREE_MONTHLY_REQUESTS = 20000  # TomTom Flow Segment Data free tier (pricing page, Sept 2026)
 FREE_MONTHLY_INCIDENT_REQUESTS = 2500  # TomTom Traffic Incidents free tier
+# Readings a day per tier: the number of times in CORE_TIMES / CONTEXT_TIMES in loop.sh (keep in sync).
+READINGS_PER_DAY = {"core": 32, "context": 13}
 QUOTA_CODES = {403, 429}
 
 FLOW_FIELDS = [
@@ -281,6 +283,13 @@ def maps_link(lat, lon):
     return f"https://www.google.com/maps?q={lat},{lon}"
 
 
+def daily_requests(segments, runs_per_day):
+    """Flow requests a day: per tier when segments.csv has tiers, else every segment runs_per_day times."""
+    if any("tier" in s for s in segments):
+        return sum(READINGS_PER_DAY.get(s.get("tier", "core"), runs_per_day) for s in segments)
+    return len(segments) * runs_per_day
+
+
 def print_check(segments, results, runs_per_day):
     print(f"{'segment':<22} {'status':<14} {'frc':<5} {'now/free km/h':<14} matched road segment")
     for seg, r in zip(segments, results):
@@ -288,8 +297,9 @@ def print_check(segments, results, runs_per_day):
         print(f"{seg['segment_id']:<22} {r['status']:<14} {str(r.get('frc') or '-'):<5} {speeds:<14} "
               f"{maps_link(r.get('seg_start_lat'), r.get('seg_start_lon')) if r['status'] == 'ok' else ''}")
         print(f"{'':<22} point you asked for: {maps_link(seg['lat'], seg['lon'])}")
-    monthly = len(segments) * runs_per_day * 31
-    print(f"\n{len(segments)} segments x {runs_per_day} runs/day x 31 days = {monthly:,} requests/month "
+    per_day = daily_requests(segments, runs_per_day)
+    monthly = per_day * 31
+    print(f"\n{len(segments)} segments, {per_day} requests/day x 31 days = {monthly:,} requests/month "
           f"(free tier: {FREE_MONTHLY_REQUESTS:,})")
     if monthly > FREE_MONTHLY_REQUESTS:
         print("WARNING: this exceeds the free tier. Remove segments or run less often.")
@@ -303,7 +313,8 @@ def main():
     ap.add_argument("--segments", default=os.path.join(here, "segments.csv"))
     ap.add_argument("--out", default="data", help="output folder (created if missing)")
     ap.add_argument("--zoom", type=int, default=10, help="TomTom zoom level used to match the road segment")
-    ap.add_argument("--runs-per-day", type=int, default=56, help="only used for the quota estimate")
+    ap.add_argument("--runs-per-day", type=int, default=32,
+                    help="only used for the quota estimate of segments without a tier")
     ap.add_argument("--check", action="store_true", help="query each segment once, print a report, write nothing")
     ap.add_argument("--tiers", default="", help="only read segments of these tiers (comma list, e.g. core,context); "
                     "segments.csv has a tier column")

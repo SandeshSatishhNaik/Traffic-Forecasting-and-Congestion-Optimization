@@ -113,6 +113,8 @@ Constraint discovered: GitHub's cron scheduler is unreliable on this repository 
 7. **Vector flow tiles for coverage**, if the licence question is settled: 12 requests returned 688 connected road pieces with speeds (section 8.3), against 10 roads for 10 requests today.
 8. **Weather with thresholds** (at least 1 mm per hour counts as rain), at more than one point. Rain in Bengaluru is patchy, and one point in the middle of the corridor cannot tell Silk Board from KR Puram.
 
+Status on 30 Sep 2026: 1 done (section 9), 2 confirmed, 3 done as far as possible (shape and OpenLR code are saved in the private repository once the token exists), 4 not yet (preprocessing step), 5 done, 6 done (incidents are polled and stored only in the private repository), 7 and 8 not done.
+
 ## 7. Extra factors to record
 
 | Factor | Type | Why it matters here | Source | Status |
@@ -178,3 +180,33 @@ Corridor box 12.899 to 13.010 N, 77.609 to 77.755 E: 389 nodes tagged `highway=t
 ### 8.4 Incidents
 
 53 incidents in the corridor at test time: 32 road closed, 20 jam, 1 road works. Delay magnitude: 32 undefined (closures), 8 major, 11 moderate, 1 minor, 1 unknown. TomTom does report incidents for Bengaluru, but a call returns only the current snapshot, so a history exists only if we poll.
+
+## 9. The connected corridor (built 30 Sep 2026)
+
+`collector/build_network.py` (workflow "Build road network") walked the road with TomTom Flow Segment requests: ask for the stretch under a seed point, step 30 m past its far end along the road, ask again. About 50 requests gave a gap-free chain in each direction of the ORR. The result is in `collector/segments.csv` (the stretches to collect), `collector/network/links.csv` (which stretch leads into which), `collector/network/features.csv` (OpenStreetMap features) and `collector/network/legacy_ids.csv`.
+
+| Route | Stretches | Length | What it is |
+|---|---|---|---|
+| orr_ccw | 8 | 19.4 km | ORR counter-clockwise (Silk Board, HSR, Agara, Iblur, Bellandur, Doddanekundi, Marathahalli, Mahadevapura to KR Puram); the first stretch runs 2.6 km west of the Silk Board junction |
+| orr_cw | 9 | 16.6 km | ORR clockwise, the same road the other way, KR Puram to Silk Board |
+| hosur | 2 | 8.6 km | Hosur Road: the old 0.65 km stretch and the 7.9 km stretch north of Silk Board |
+| old_airport, varthur | 1 each | 14.6 km each | the two long stretches of Old Airport / Varthur Road, kept as alternatives to the ORR |
+
+- **Links:** 16 directed `flow` links (7 + 8 along the ORR, 1 on Hosur Road) and 5 `crossing` records (Hosur Road crosses the ORR at Silk Board; Old Airport and Varthur Road each cross two ORR stretches at Marathahalli). Two ends do not match exactly (45 m at orr_ccw_04 to orr_iblur, 18 m at orr_cw_05 to orr_cw_06): small geometry mismatches, not missing road.
+- **The two ORR directions are two separate chains.** No link joins them. If the model should see that both carriageways share weather and events, add a link between stretches that run side by side in opposite directions.
+- **Correction of the first list:** `sarjapur_agara` was not Sarjapur Road. The walk shows it is the ORR eastbound near Agara (`orr_ccw_03`); OpenStreetMap's Sarjapur Road there (way 631197942, a one-way dual carriageway) is a different road. Its history is now `orr_ccw_03` (`legacy_ids.csv`). Sarjapur Road is not covered yet; it needs a seed point on it, away from the ORR.
+- **Dropped:** a 20 km stretch the Sarjapur walk found (FRC3) and the two Hosur Road stretches south of Bommanahalli (14.5 km and 8.8 km): too long and too far from the ORR.
+- **Stretch lengths are still uneven:** 0.65 km to 14.6 km. The ORR pieces are 0.7 to 7.4 km.
+
+OpenStreetMap features, in the corridor box (`features.csv` has all columns):
+
+- The corridor box holds 816 traffic-signal nodes and 4,024 points of interest (schools, hospitals, malls, offices, bus stops, metro).
+- The ORR has 3 lanes per direction and mostly a 60 km/h limit (40 km/h near Marathahalli and Mahadevapura, 30 km/h on one short stretch), and is tagged one-way on both carriageways.
+- **Signals are concentrated between Silk Board and Agara:** 5 to 10 per km on orr_ccw_01, orr_ccw_02, orr_cw_06, orr_cw_07 and orr_hsr. North of Marathahalli the ORR has none (orr_mahadevapura 0, orr_doddanekundi 0.5 per km); orr_cw_03 also has none. Hosur Road north of Silk Board has 7.9 per km, Old Airport and Varthur Road 4.3 to 4.4. Counts include signals on the opposite carriageway and pedestrian-crossing signals, so per-km values are upper estimates.
+- Intersections (nodes where 3 or more roads meet) run 5 to 13 per km on every stretch.
+- Offices are the most common point of interest along the ORR (up to 64 within 300 m of orr_ccw_01), which fits its use by commuters to the tech parks.
+
+Schedule and budget: the ORR stretches are read at 32 times a day (every 15 minutes in the windows 08:07 to 10:07 and 17:37 to 20:07, every 30 minutes around them, every 2 hours at night) and the four context stretches at 13 times: 596 requests a day, 18,476 in a 31-day month against the free 20,000. Incidents are polled every half hour into an event log, in the private repository only. TomTom's incident request accepted the fields the collector asks for (checked 30 Sep; 229 incidents were active in the corridor box at 10:08 IST).
+
+Open items: store each stretch's shape and OpenLR code in the private repository (needs the token), Sarjapur Road, and a script that turns `links.csv` into the adjacency matrix for the models.
+

@@ -1,6 +1,6 @@
 # Bengaluru traffic collector
 
-No sensors, no manual work. GitHub runs `collect.py` around the clock on its own servers: every 15 minutes in the morning and evening rush hours, every 30 minutes at midday, and hourly at night. Each run asks TomTom for the current speed on 10 road segments (TomTom gets these from GPS traces of phones and cars) and asks Open-Meteo for the weather. The rows are saved to a private data repository (until you add the token in "Keep the data private" below, to the public `bengaluru-data` branch). After 4–6 weeks you have a continuous time series of about 1,600–2,400 readings per segment.
+No sensors, no manual work. GitHub runs `collect.py` around the clock on its own servers. Each run asks TomTom for the current speed on the road stretches that are due (21 stretches: the Outer Ring Road in both directions from Silk Board to KR Puram, plus Hosur Road and the two long Old Airport / Varthur Road stretches; TomTom gets these speeds from GPS traces of phones and cars) and asks Open-Meteo for the weather. The Outer Ring Road stretches are read every 15 minutes in the two rush-hour windows and less often around them; every half hour it also polls TomTom's traffic incidents. The rows are saved to a private data repository (until you add the token in "Keep the data private" below, to the public `bengaluru-data` branch). After 6 weeks that is about 1,350 readings per Outer Ring Road stretch and about 550 per context stretch. See "Schedule and budget" for the times.
 
 ## Setup (about 15 minutes, once)
 
