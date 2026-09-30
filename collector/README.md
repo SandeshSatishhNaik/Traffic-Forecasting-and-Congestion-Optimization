@@ -63,6 +63,22 @@ This makes one request per segment, prints Google Maps links for the point you c
 
 The Outer Ring Road is a divided road, so each point measures one direction of travel. The `seg_start_*` and `seg_end_*` columns show which direction TomTom matched.
 
+## Building the road network
+
+The stretches TomTom returns are pieces of road of very different lengths, and the readings alone do not say which stretch leads into which. `build_network.py` (workflow **Build road network**, run by hand) fixes that:
+
+1. **Walks the road.** It asks TomTom for the stretch under a seed point, takes the far end of that stretch, steps a few metres past it along the road and asks again. Repeated in both directions, this chains stretches with no gaps along the Outer Ring Road and its feeder roads.
+2. **Links the stretches.** `flow` links (a vehicle can drive from the end of A into the start of B) and `crossing` records (two roads cross here).
+3. **Adds OpenStreetMap features** to every stretch: road class, lanes, speed limit, one-way, bridge and tunnel share, traffic signals (count, per km, distance to the next one from each end), intersections, and counts of bus stops, metro stations, schools, hospitals, malls and offices within 300 m.
+
+The road layout (`segments.csv`, `links.csv`) and the OpenStreetMap features (`features.csv`, © OpenStreetMap contributors, ODbL) are printed in the run's log. The shape and OpenLR code of each stretch are TomTom results; they are saved only in the private repository (`network/stretches.json`) when `DATA_REPO_TOKEN` is set. Options: **walk_only** skips the slower OpenStreetMap step, **verbose** prints every probe. It uses about 200 TomTom requests.
+
+Test without network: `python3 collector/build_network.py --selftest`.
+
+## Incidents
+
+When the data goes to the private repository, the collector also polls TomTom's traffic incidents in the area of the segments every half hour (IST :07 and :37; about 1,200 requests a month against the free 2,500). `incidents/YYYY-MM.csv` is an event log: a `poll` row per poll (`n_active` = incidents active then), a `new` or `changed` row with the details, and an `ended` row when an incident is no longer reported. A daytime poll returns about 230 active incidents, mostly long-running road works and closures, so a full snapshot every time would be mostly repeats.
+
 ## Run it somewhere else
 
 Any always-on computer with Python 3.8+ and git works: from a clone of the repository run

@@ -40,22 +40,31 @@ MAX_GAP_M = 90                    # next stretch must start this close to the pr
 MAX_TURN_DEG = 60                 # ... and continue in roughly the same direction
 STOP_M = 350                      # a walk ends this close to its target
 
-# Where to start walking. seed_id keeps the ids of the stretches collected so far.
-# fwd/back: a target point to stop at, or None to walk a fixed number of stretches.
+# Where to start walking. fwd/back: a target point to stop at (the walk ends once the target lies on
+# the last stretch), or None to walk a fixed number of stretches. tier: how often the stretches are read
+# (core = the Outer Ring Road, context = the roads around it; see loop.sh).
 ROUTES = [
-    dict(name="orr_ccw", seed=(12.9231101, 77.6702694), seed_id="orr_iblur",
+    dict(name="orr_ccw", tier="core", seed=(12.9231101, 77.6702694),
          fwd=(13.0003, 77.6803), back=(12.9176, 77.6233), fwd_steps=8, back_steps=8),
-    dict(name="orr_cw", seed=(12.9529429, 77.7001793), seed_id="orr_marathahalli",
+    dict(name="orr_cw", tier="core", seed=(12.9529429, 77.7001793),
          fwd=(12.9176, 77.6233), back=(13.0004, 77.6788), fwd_steps=8, back_steps=8),
-    dict(name="sarjapur", seed=(12.9244884, 77.6451418), seed_id="sarjapur_agara",
-         fwd=None, back=None, fwd_steps=2, back_steps=2),
-    dict(name="hosur", seed=(12.9131197, 77.6251008), seed_id="hosur_bommanahalli",
-         fwd=None, back=None, fwd_steps=2, back_steps=2),
-    dict(name="old_airport", seed=(12.9589276, 77.6633594), seed_id="old_airport_konena",
+    dict(name="hosur", tier="context", seed=(12.9131197, 77.6251008),
+         fwd=None, back=None, fwd_steps=1, back_steps=0),
+    dict(name="old_airport", tier="context", seed=(12.9589276, 77.6633594),
          fwd=None, back=None, fwd_steps=0, back_steps=0),
-    dict(name="varthur", seed=(12.9561094, 77.7295768), seed_id="varthur_kundalahalli",
+    dict(name="varthur", tier="context", seed=(12.9561094, 77.7295768),
          fwd=None, back=None, fwd_steps=0, back_steps=0),
 ]
+# The request points of the first ten segments, so their ids and history carry over.
+LEGACY = {
+    "orr_hsr": (12.9164439, 77.6399669), "orr_iblur": (12.9231101, 77.6702694),
+    "orr_bellandur": (12.9292128, 77.6831094), "orr_marathahalli": (12.9529429, 77.7001793),
+    "orr_doddanekundi": (12.9750108, 77.6974233), "orr_mahadevapura": (12.9863477, 77.6906140),
+    "hosur_bommanahalli": (12.9131197, 77.6251008), "sarjapur_agara": (12.9244884, 77.6451418),
+    "old_airport_konena": (12.9589276, 77.6633594), "varthur_kundalahalli": (12.9561094, 77.7295768),
+}
+# Legacy ids that described the wrong road: not reused, listed in legacy_ids.csv instead.
+RENAMED = {"sarjapur_agara": "was labelled Sarjapur Road, but TomTom matched the Outer Ring Road eastbound"}
 SILK_BOARD = (12.9176, 77.6233)
 
 
@@ -269,8 +278,7 @@ def walk(flow, seed, direction, target, max_steps, log):
         chain.append(nxt)
         seen.add(nxt["key"])
         cur = nxt
-        far = nxt["pts"][-1] if direction > 0 else nxt["pts"][0]
-        if target and hav_m(far, target) < STOP_M:
+        if target and dist_to_poly_m(target, nxt["pts"])[0] < STOP_M:
             reason = "target"
             break
     return chain, reason
@@ -284,31 +292,27 @@ def build_stretches(flow, routes, log):
         if seed is None:
             log(f"route {r['name']}: no stretch at the seed point")
             continue
-        seed = dict(seed, id=r["seed_id"])
-        log(f"route {r['name']}: seed {r['seed_id']} {seed['frc']} {seed['len_m']:.0f} m")
+        log(f"route {r['name']}: seed {seed['frc']} {seed['len_m']:.0f} m")
         fwd, why_f = walk(flow, seed, +1, r["fwd"], r["fwd_steps"], log)
         back, why_b = walk(flow, seed, -1, r["back"], r["back_steps"], log)
         log(f"route {r['name']}: {len(back)} before the seed ({why_b}), {len(fwd)} after ({why_f})")
-        result.append((r["name"], list(reversed(back)) + [seed] + fwd))
+        result.append((r, list(reversed(back)) + [seed] + fwd))
     return result
 
 
-def name_stretches(routes_result, known):
-    """Give ids: keep the ids of stretches we already collect, number the rest along the route."""
-    by_key = {k: i for i, k in known.items()}
-    out = []
-    for rname, chain in routes_result:
+def name_stretches(routes_result, legacy_keys):
+    """Give ids: keep the id of every stretch the first ten segments already collect (unless RENAMED),
+    number the rest along their route. A stretch reached from two routes is kept once."""
+    out, seen = [], set()
+    for r, chain in routes_result:
         for seq, s in enumerate(chain, 1):
-            sid = s.get("id") or by_key.get(s["key"]) or f"{rname}_{seq:02d}"
-            out.append(dict(s, id=sid, route=rname, seq=seq))
-    # the same stretch can be reached from two routes: keep the first
-    seen, uniq = set(), []
-    for s in out:
-        if s["key"] in seen:
-            continue
-        seen.add(s["key"])
-        uniq.append(s)
-    return uniq
+            if s["key"] in seen:
+                continue
+            seen.add(s["key"])
+            old = legacy_keys.get(s["key"])
+            sid = old if old and old not in RENAMED else f"{r['name']}_{seq:02d}"
+            out.append(dict(s, id=sid, route=r["name"], tier=r["tier"], seq=seq, legacy=old or ""))
+    return out
 
 
 # ------------------------------------------------------------------ links
@@ -549,14 +553,14 @@ def store_private(path, text, log):
         log(f"  could not store {path} privately: {e}")
 
 
-def run(flow, routes, do_osm, log):
-    known = {}
-    for r in routes:
-        s = flow.stretch(*r["seed"])
-        if s:
-            known[r["seed_id"]] = s["key"]
+def run(flow, routes, do_osm, log, legacy=None):
+    legacy_keys = {}
+    for sid, pt in (LEGACY if legacy is None else legacy).items():
+        st = flow.stretch(*pt)
+        if st:
+            legacy_keys[st["key"]] = sid
     chains = build_stretches(flow, routes, log)
-    stretches = name_stretches(chains, {v: k for k, v in known.items()})
+    stretches = name_stretches(chains, legacy_keys)
     log(f"{len(stretches)} stretches, {flow.calls} TomTom requests so far")
     links = make_links(stretches)
     for s in stretches:
@@ -569,7 +573,8 @@ def run(flow, routes, do_osm, log):
 
 def emit_walk(stretches, links):
     """Print the walk result at once, so a slow or failing OSM step cannot lose it."""
-    rows = [{"segment_id": s["id"], "route": s["route"], "seq": s["seq"], "length_km": round(s["len_m"] / 1000, 3),
+    rows = [{"segment_id": s["id"], "route": s["route"], "tier": s["tier"], "seq": s["seq"],
+             "legacy_id": s["legacy"], "length_km": round(s["len_m"] / 1000, 3),
              "frc": s["frc"], "req_lat": f"{s['req'][0]:.6f}" if s.get("req") else "",
              "req_lon": f"{s['req'][1]:.6f}" if s.get("req") else "",
              "start_lat": f"{s['pts'][0][0]:.5f}", "start_lon": f"{s['pts'][0][1]:.5f}",
@@ -586,11 +591,14 @@ def report(stretches, links, feats):
         seg_rows.append({"segment_id": s["id"], "name": f.get("osm_name") or s["route"],
                          "road": f.get("osm_name") or s["route"],
                          "lat": f"{rq[0]:.6f}" if rq else "", "lon": f"{rq[1]:.6f}" if rq else "",
-                         "osm_way_id": f.get("osm_way_id", ""), "route": s["route"], "seq": s["seq"],
+                         "osm_way_id": f.get("osm_way_id", ""), "route": s["route"], "tier": s["tier"], "seq": s["seq"],
                          "length_km": round(s["len_m"] / 1000, 3), "frc": s["frc"],
                          "start_lat": f"{s['pts'][0][0]:.5f}", "start_lon": f"{s['pts'][0][1]:.5f}",
                          "end_lat": f"{s['pts'][-1][0]:.5f}", "end_lon": f"{s['pts'][-1][1]:.5f}"})
     emit("segments.csv", to_csv(seg_rows, list(seg_rows[0]) if seg_rows else []))
+    alias = [{"old_id": old, "new_id": next((s["id"] for s in stretches if s["legacy"] == old), ""), "note": why}
+             for old, why in RENAMED.items()]
+    emit("legacy_ids.csv", to_csv(alias, ["old_id", "new_id", "note"]))
     if feats:
         fields = ["segment_id", "length_km", "frc", "osm_road", "osm_name", "lanes", "maxspeed_kmph", "oneway",
                   "bridge_share", "tunnel_share", "signals", "signals_per_km", "dist_signal_start_m",
@@ -601,7 +609,7 @@ def report(stretches, links, feats):
 
 def store_geometry(stretches, log):
     doc = [{"segment_id": s["id"], "route": s["route"], "seq": s["seq"], "frc": s["frc"], "openlr": s["openlr"],
-            "length_m": round(s["len_m"]), "polyline": [[round(a, 6), round(b, 6)] for a, b in s["pts"]]}
+            "tier": s["tier"], "legacy_id": s["legacy"], "length_m": round(s["len_m"]), "polyline": [[round(a, 6), round(b, 6)] for a, b in s["pts"]]}
            for s in stretches]
     store_private("network/stretches.json", json.dumps(doc, separators=(",", ":")), log)
 
@@ -628,13 +636,13 @@ def _selftest():
         return {"flowSegmentData": {"frc": "FRC1", "openlr": "x", "coordinates": {"coordinate": [
             {"latitude": p[0], "longitude": p[1]} for p in best[1]]}}}
 
-    routes = [dict(name="road_out", seed=out_pts[30], seed_id="seed_out", fwd=out_pts[60], back=out_pts[0],
+    routes = [dict(name="road_out", tier="core", seed=out_pts[30], fwd=out_pts[60], back=out_pts[0],
                    fwd_steps=8, back_steps=8),
-              dict(name="road_back", seed=back_pts[10], seed_id="seed_back", fwd=back_pts[60], back=back_pts[0],
+              dict(name="road_back", tier="core", seed=back_pts[10], fwd=back_pts[60], back=back_pts[0],
                    fwd_steps=8, back_steps=8),
-              dict(name="cross", seed=cross[0], seed_id="cross_1", fwd=None, back=None, fwd_steps=0, back_steps=0)]
+              dict(name="cross", tier="context", seed=cross[0], fwd=None, back=None, fwd_steps=0, back_steps=0)]
     flow = Flow("", fake=fake, pause=0)
-    stretches, links, _ = run(flow, routes, False, lambda m: None)
+    stretches, links, _ = run(flow, routes, False, lambda m: None, legacy={})
     by_route = {}
     for s in stretches:
         by_route.setdefault(s["route"], []).append(s)
