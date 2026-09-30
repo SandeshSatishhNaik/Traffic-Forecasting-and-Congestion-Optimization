@@ -1,0 +1,40 @@
+name: Move data to the private repository
+
+# One-off. Copies the readings on the public bengaluru-data branch into the
+# private data repository (data/legacy/), verifies the copy, and can then
+# delete the public branch. Run it after the collection chain has switched to
+# the private repository (see collector/loop.sh); the script refuses to delete
+# the branch while it is still being written to.
+
+on:
+  workflow_dispatch:
+    inputs:
+      delete_public_branch:
+        description: "Delete the public bengaluru-data branch after the copy is verified"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write  # only needed to delete the public branch
+
+concurrency:
+  group: migrate-data
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/checkout@v5
+        with:
+          ref: bengaluru-data
+          path: public-data
+
+      - name: Copy, verify, optionally delete
+        env:
+          DATA_REPO_TOKEN: ${{ secrets.DATA_REPO_TOKEN }}
+          DELETE_PUBLIC_BRANCH: ${{ inputs.delete_public_branch }}
+        run: bash collector/migrate_to_private.sh
