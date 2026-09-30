@@ -99,9 +99,11 @@ next_slot() {
   done
 }
 
-# Incidents are polled every half hour (IST :07 and :37) and on a manual start.
+# Incidents are polled every half hour (IST :07 and :37) and on a manual start, private mode only.
 incidents_due() {
   [[ "${COLLECT_INCIDENTS:-true}" == "true" ]] || return 1
+  # Incident data is only stored in the private repository, never on the public branch.
+  [[ -n "${DATA_REPO_TOKEN:-}" ]] || return 1
   [[ ${1:-} == "force" ]] && return 0
   local m
   m=$(TZ=Asia/Kolkata date +%M)
