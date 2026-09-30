@@ -1,6 +1,6 @@
 # Bengaluru traffic collector
 
-No sensors, no manual work. GitHub runs `collect.py` around the clock on its own servers: every 15 minutes in the morning and evening rush hours, every 30 minutes at midday, and hourly at night. Each run asks TomTom for the current speed on 10 road segments (TomTom gets these from GPS traces of phones and cars) and asks Open-Meteo for the weather. The rows are saved to the `bengaluru-data` branch. After 4–6 weeks you have a continuous time series of about 1,600–2,400 readings per segment.
+No sensors, no manual work. GitHub runs `collect.py` around the clock on its own servers: every 15 minutes in the morning and evening rush hours, every 30 minutes at midday, and hourly at night. Each run asks TomTom for the current speed on 10 road segments (TomTom gets these from GPS traces of phones and cars) and asks Open-Meteo for the weather. The rows are saved to a private data repository (until you add the token in "Keep the data private" below, to the public `bengaluru-data` branch). After 4–6 weeks you have a continuous time series of about 1,600–2,400 readings per segment.
 
 ## Setup (about 15 minutes, once)
 
@@ -11,6 +11,23 @@ No sensors, no manual work. GitHub runs `collect.py` around the clock on its own
 5. **Check the roads matched correctly.** Open that CSV. Every row should have `status` = `ok`. The `frc` column should be `FRC0`–`FRC3` (major roads). If a row shows `FRC5` or higher, that point snapped to a side street: move its coordinates in `segments.csv` onto the main road. Also check that no two rows have the same `seg_start_*`/`seg_end_*` coordinates. TomTom road segments can be several kilometres long, so two points on one road can match the same segment and waste requests (the first run found this for Old Airport Road and Varthur Road).
 6. **Switch collection on.** Same Settings page → **Variables → New repository variable**. Name: `COLLECT_ENABLED`, value: `true`. Then press **Run workflow** once to start the chain.
 7. **Leave it running.** Once a week, open the Actions tab and check for red (failed) runs.
+
+## Keep the data private (three steps, once)
+
+TomTom's terms do not allow publishing the results, so the readings belong in a private repository while this repository stays public (public repositories get free unlimited Actions minutes). The workflow reads its instructions from `collector/loop.sh`: if the secret `DATA_REPO_TOKEN` exists, it pushes every reading to the private repository; if not, it falls back to the public `bengaluru-data` branch so that collection never stops.
+
+1. **Create the private repository.** <https://github.com/new>, name `traffic-data-private`, **Private**, tick "Add a README file".
+2. **Create a token that can write only to it.** <https://github.com/settings/personal-access-tokens/new>: name `traffic-data-writer`; Repository access: **Only select repositories** → `traffic-data-private`; Repository permissions → **Contents: Read and write**. Generate and copy the `github_pat_...` value. It expires after the period you choose (at most one year): put the date in your calendar.
+3. **Save it in this repository.** Settings → Secrets and variables → Actions → **Secrets** → New repository secret. Name `DATA_REPO_TOKEN`, value: the token.
+
+Then run the workflow **Move data to the private repository** once (Actions tab → Run workflow, leave "delete" unticked). It copies the readings already on the public branch into `data/legacy/` of the private repository and checks the row counts. When the collection chain has switched to the private repository (the next run starts at most 5.5 hours after you saved the secret; you can also cancel the running collection and start it again), run the workflow a second time with "delete" ticked to remove the public branch.
+
+If a different repository name is used, set the Actions variable `DATA_REPO` to `owner/name`. Files in the private repository:
+
+- `data/tomtom_flow/YYYY-MM.csv`, `data/weather/YYYY-MM.csv`: the readings (all readings from the switch onwards).
+- `data/incidents/YYYY-MM.csv` and `data/incidents/state.json`: TomTom incidents as an event log (see `data/README.md` there).
+- `data/legacy/...`: the readings collected before the switch, in the same layout. Load both folders and concatenate them.
+- `network/stretches.json`: shape and OpenLR code of every stretch (written by "Build road network").
 
 ## How the chain works
 

@@ -380,14 +380,24 @@ def request_point(flow, s):
 
 
 # --------------------------------------------------------------- OSM part
-def overpass(query, log):
+_DEAD_INSTANCES = set()
+
+
+def overpass(query, log, deadline=None):
+    """Run an Overpass query on the first instance that answers; instances that failed are skipped later."""
     last = "no instance answered"
     for url in OVERPASS_URLS:
+        if url in _DEAD_INSTANCES:
+            continue
+        if deadline and time.time() > deadline:
+            raise RuntimeError("OSM time budget used up")
         try:
-            return http(url, data={"data": query}, timeout=180, tries=2)["elements"]
+            return http(url, data={"data": query}, timeout=90, tries=1)["elements"]
         except RuntimeError as e:
             last = f"{url.split('/')[2]}: {e}"
             log(f"  overpass {last}")
+            if str(e) not in ("HTTP 429",):
+                _DEAD_INSTANCES.add(url)
     raise RuntimeError(last)
 
 
@@ -414,32 +424,38 @@ def _maxspeed(v):
         return None
 
 
-def osm_features(stretches, log, pause=1.0):
-    rows = []
+def osm_features(stretches, log, pause=1.0, budget_s=1200):
+    """Two Overpass queries per stretch: roads + signals, then the point-of-interest counts."""
+    rows, deadline = [], time.time() + budget_s
+    roads = "|".join(CAR_ROADS)
+    pois = "".join(f'{sel}(around:300,{{arg}});out count;' for _, sel in POI_COUNTS)
     for s in stretches:
         arg = poly_arg(s["pts"])
         km = s["len_m"] / 1000
         f = {"segment_id": s["id"], "length_km": round(km, 3), "frc": s["frc"]}
         try:
-            els = overpass(f'[out:json][timeout:120];(way(around:35,{arg})["highway"~"^({"|".join(CAR_ROADS)})$"];>;);out body;', log)
+            els = overpass(f'[out:json][timeout:90];(way(around:35,{arg})["highway"~"^({roads})$"];>;);out body;'
+                           f'(node(around:30,{arg})["highway"="traffic_signals"];'
+                           f'node(around:30,{arg})["crossing"="traffic_signals"];);out;', log, deadline)
             time.sleep(pause)
             nodes = {e["id"]: (e["lat"], e["lon"]) for e in els if e["type"] == "node"}
             ways = [e for e in els if e["type"] == "way"]
             f.update(_road_tags(s, ways, nodes))
-            sig = overpass(f'[out:json][timeout:120];(node(around:30,{arg})["highway"="traffic_signals"];'
-                           f'node(around:30,{arg})["crossing"="traffic_signals"];);out;', log)
-            time.sleep(pause)
-            pts = [(e["lat"], e["lon"]) for e in sig]
+            sigs = {e["id"]: (e["lat"], e["lon"]) for e in els if e["type"] == "node" and (
+                e.get("tags", {}).get("highway") == "traffic_signals"
+                or e.get("tags", {}).get("crossing") == "traffic_signals")}
+            pts = list(sigs.values())
             near = [p for p in pts if dist_to_poly_m(p, s["pts"])[0] <= 30]
             f["signals"] = len(near)
             f["signals_per_km"] = round(len(near) / km, 2) if km else ""
             f["dist_signal_start_m"] = round(min((hav_m(s["pts"][0], p) for p in pts), default=-1))
             f["dist_signal_end_m"] = round(min((hav_m(s["pts"][-1], p) for p in pts), default=-1))
-            for key, sel in POI_COUNTS:
-                cnt = overpass(f'[out:json][timeout:120];({sel}(around:300,{arg}););out count;', log)
-                time.sleep(pause)
-                f[key] = int(cnt[0]["tags"]["total"]) if cnt else ""
-        except RuntimeError as e:
+            cnt = overpass("[out:json][timeout:90];" + pois.format(arg=arg), log, deadline)
+            time.sleep(pause)
+            counts = [c for c in cnt if c.get("type") == "count"]
+            for (key, _), c in zip(POI_COUNTS, counts):
+                f[key] = int(c["tags"]["total"])
+        except (RuntimeError, KeyError, ValueError) as e:
             log(f"  {s['id']}: OSM query failed ({e})")
         rows.append(f)
         log(f"  {s['id']}: OSM features done")
@@ -546,8 +562,20 @@ def run(flow, routes, do_osm, log):
     for s in stretches:
         s["req"] = request_point(flow, s)
     log(f"{flow.calls} TomTom requests in total")
+    emit_walk(stretches, links)
     feats = osm_features(stretches, log) if do_osm else []
     return stretches, links, feats
+
+
+def emit_walk(stretches, links):
+    """Print the walk result at once, so a slow or failing OSM step cannot lose it."""
+    rows = [{"segment_id": s["id"], "route": s["route"], "seq": s["seq"], "length_km": round(s["len_m"] / 1000, 3),
+             "frc": s["frc"], "req_lat": f"{s['req'][0]:.6f}" if s.get("req") else "",
+             "req_lon": f"{s['req'][1]:.6f}" if s.get("req") else "",
+             "start_lat": f"{s['pts'][0][0]:.5f}", "start_lon": f"{s['pts'][0][1]:.5f}",
+             "end_lat": f"{s['pts'][-1][0]:.5f}", "end_lon": f"{s['pts'][-1][1]:.5f}"} for s in stretches]
+    emit("walk.csv", to_csv(rows, list(rows[0]) if rows else []))
+    emit("links.csv", to_csv(links, ["from_id", "to_id", "kind", "gap_m", "lat", "lon"]))
 
 
 def report(stretches, links, feats):
@@ -563,7 +591,6 @@ def report(stretches, links, feats):
                          "start_lat": f"{s['pts'][0][0]:.5f}", "start_lon": f"{s['pts'][0][1]:.5f}",
                          "end_lat": f"{s['pts'][-1][0]:.5f}", "end_lon": f"{s['pts'][-1][1]:.5f}"})
     emit("segments.csv", to_csv(seg_rows, list(seg_rows[0]) if seg_rows else []))
-    emit("links.csv", to_csv(links, ["from_id", "to_id", "kind", "gap_m", "lat", "lon"]))
     if feats:
         fields = ["segment_id", "length_km", "frc", "osm_road", "osm_name", "lanes", "maxspeed_kmph", "oneway",
                   "bridge_share", "tunnel_share", "signals", "signals_per_km", "dist_signal_start_m",
