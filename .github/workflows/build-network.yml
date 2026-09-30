@@ -12,6 +12,10 @@ on:
         description: "Print every probe of the walk"
         type: boolean
         default: false
+      walk_only:
+        description: "Only walk the road; skip the slower OpenStreetMap step"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -31,4 +35,4 @@ jobs:
         env:
           TOMTOM_API_KEY: ${{ secrets.TOMTOM_API_KEY }}
           DATA_REPO_TOKEN: ${{ secrets.DATA_REPO_TOKEN }}
-        run: python3 collector/build_network.py ${{ inputs.verbose && '--verbose' || '' }}
+        run: python3 collector/build_network.py ${{ inputs.verbose && '--verbose' || '' }} ${{ inputs.walk_only && '--no-osm' || '' }}
