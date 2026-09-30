@@ -1,6 +1,6 @@
 # Bengaluru traffic collector
 
-No sensors, no manual work. GitHub runs `collect.py` around the clock on its own servers. Each run asks TomTom for the current speed on the road stretches that are due (21 stretches: the Outer Ring Road in both directions from Silk Board to KR Puram, plus Hosur Road and the two long Old Airport / Varthur Road stretches; TomTom gets these speeds from GPS traces of phones and cars) and asks Open-Meteo for the weather. The Outer Ring Road stretches are read every 15 minutes in the two rush-hour windows and less often around them; every half hour it also polls TomTom's traffic incidents. The rows are saved to a private data repository (until you add the token in "Keep the data private" below, to the public `bengaluru-data` branch). After 6 weeks that is about 1,350 readings per Outer Ring Road stretch and about 550 per context stretch. See "Schedule and budget" for the times.
+No sensors, no manual work. GitHub runs `collect.py` around the clock on its own servers. Each run asks TomTom for the current speed on the road stretches that are due (21 stretches: the Outer Ring Road in both directions from Silk Board to KR Puram, plus Hosur Road and the two long Old Airport / Varthur Road stretches; TomTom gets these speeds from GPS traces of phones and cars) and asks Open-Meteo for the weather. The Outer Ring Road stretches are read every 15 minutes in the two rush-hour windows and less often around them; once the data goes to the private repository it also polls TomTom's traffic incidents at the :07 and :37 readings. The rows are saved to a private data repository (until you add the token in "Keep the data private" below, to the public `bengaluru-data` branch). After 6 weeks that is about 1,350 readings per Outer Ring Road stretch and about 550 per context stretch. See "Schedule and budget" for the times.
 
 ## Setup (about 15 minutes, once)
 
@@ -8,7 +8,7 @@ No sensors, no manual work. GitHub runs `collect.py` around the clock on its own
 2. **Get a free TomTom API key.** Sign up at <https://developer.tomtom.com>. No credit card is needed. Copy the API key from your dashboard.
 3. **Add the key to GitHub.** Repository **Settings → Secrets and variables → Actions → Secrets → New repository secret**. Name: `TOMTOM_API_KEY`, value: your key. Never paste the key into a file in the repository.
 4. **Test one run.** **Actions** tab → **Collect Bengaluru traffic** → **Run workflow**. After about a minute, a `bengaluru-data` branch appears with `data/tomtom_flow/<month>.csv`.
-5. **Check the roads matched correctly.** Open that CSV. Every row should have `status` = `ok`. The `frc` column should be `FRC0`–`FRC3` (major roads). If a row shows `FRC5` or higher, that point snapped to a side street: move its coordinates in `segments.csv` onto the main road. Also check that no two rows have the same `seg_start_*`/`seg_end_*` coordinates. TomTom road segments can be several kilometres long, so two points on one road can match the same segment and waste requests (the first run found this for Old Airport Road and Varthur Road).
+5. **Check the roads matched correctly.** Open that CSV. Every row should have `status` = `ok`. The `frc` column should be `FRC0`–`FRC3` (major roads). If a row shows `FRC5` or higher, that point snapped to a side street. Also check that no two segments have the same `seg_start_*`/`seg_end_*` coordinates: TomTom stretches can be several kilometres long, so two points on one road can match the same stretch and waste requests. The network builder (below) picks request points that map back to their own stretch; this check matters when you change points by hand.
 6. **Switch collection on.** Same Settings page → **Variables → New repository variable**. Name: `COLLECT_ENABLED`, value: `true`. Then press **Run workflow** once to start the chain.
 7. **Leave it running.** Once a week, open the Actions tab and check for red (failed) runs.
 
@@ -31,7 +31,7 @@ If a different repository name is used, set the Actions variable `DATA_REPO` to 
 
 ## How the chain works
 
-GitHub's cron scheduler does not reliably start scheduled runs on new repositories (on this one it never fired). So `loop.sh` keeps its own clock: one workflow run wakes at :07, :22, :37 and :52 past every hour, collects if that slot is on the schedule below, stays alive for about 5.5 hours, and just before it ends starts the next run of the same workflow. The chain never needs a human, and the cron entry in the workflow is only a backup that restarts it if it ever breaks.
+GitHub's cron scheduler does not reliably start scheduled runs on new repositories (on this one it started only about 5 of 8 expected runs and up to 2.5 hours late). So `loop.sh` keeps its own clock: one workflow run wakes at :07, :22, :37 and :52 past every hour, collects if that slot is on the schedule below, stays alive for about 5.5 hours, and just before it ends starts the next run of the same workflow. The chain never needs a human, and the cron entry in the workflow is only a backup that restarts it if it ever breaks.
 
 - **Stop:** set `COLLECT_ENABLED` to `false`. The next run is skipped, so the chain ends when the current run finishes. Cancel the running run on the Actions tab to stop immediately.
 - **Restart:** set it back to `true` and press **Run workflow**.
@@ -75,7 +75,7 @@ Test without network: `python3 collector/build_network.py --selftest`.
 
 ## Incidents
 
-When the data goes to the private repository, the collector also polls TomTom's traffic incidents in the area of the segments every half hour (IST :07 and :37; about 1,200 requests a month against the free 2,500). `incidents/YYYY-MM.csv` is an event log: a `poll` row per poll (`n_active` = incidents active then), a `new` or `changed` row with the details, and an `ended` row when an incident is no longer reported. A daytime poll returns about 230 active incidents, mostly long-running road works and closures, so a full snapshot every time would be mostly repeats.
+When the data goes to the private repository, the collector also polls TomTom's traffic incidents in the area of the segments at the readings that fall on IST :07 and :37 (every half hour by day, every 2 hours at night: 24 times a day, about 744 requests a month against the free 2,500). `incidents/YYYY-MM.csv` is an event log: a `poll` row per poll (`n_active` = incidents active then), a `new` or `changed` row with the details, and an `ended` row when an incident is no longer reported. A daytime poll returns about 230 active incidents, mostly long-running road works and closures, so a full snapshot every time would be mostly repeats.
 
 ## Run it somewhere else
 

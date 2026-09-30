@@ -109,7 +109,7 @@ Constraint discovered: GitHub's cron scheduler is unreliable on this repository 
 3. **Store each stretch's shape and OpenLR code once** (a small static file, not with every reading). That is what lets us match it to OSM and draw it on a map.
 4. **Use a fixed reference speed per road** in preprocessing (section 5).
 5. **Add static road features from OpenStreetMap** (free): road class, lanes, speed limit, one-way, signals on the stretch and per km, distance to the next signal, junction type, flyover/underpass.
-6. **Add incidents** as event flags. TomTom reports them for Bengaluru (section 8.4). Every 30 minutes is about 1,500 requests a month.
+6. **Add incidents** as event flags. TomTom reports them for Bengaluru (section 8.4). Every 30 minutes is about 1,500 requests a month (the collector polls at 24 of its readings a day, about 750 a month).
 7. **Vector flow tiles for coverage**, if the licence question is settled: 12 requests returned 688 connected road pieces with speeds (section 8.3), against 10 roads for 10 requests today.
 8. **Weather with thresholds** (at least 1 mm per hour counts as rain), at more than one point. Rain in Bengaluru is patchy, and one point in the middle of the corridor cannot tell Silk Board from KR Puram.
 
@@ -206,7 +206,7 @@ OpenStreetMap features, in the corridor box (`features.csv` has all columns):
 - Intersections (nodes where 3 or more roads meet) run 5 to 13 per km on every stretch.
 - Offices are the most common point of interest along the ORR (up to 64 within 300 m of orr_ccw_01), which fits its use by commuters to the tech parks.
 
-Schedule and budget: the ORR stretches are read at 32 times a day (every 15 minutes in the windows 08:07 to 10:07 and 17:37 to 20:07, every 30 minutes around them, every 2 hours at night) and the four context stretches at 13 times: 596 requests a day, 18,476 in a 31-day month against the free 20,000. Incidents are polled every half hour into an event log, in the private repository only. TomTom's incident request accepted the fields the collector asks for (checked 30 Sep; 229 incidents were active in the corridor box at 10:08 IST).
+Schedule and budget: the ORR stretches are read at 32 times a day (every 15 minutes in the windows 08:07 to 10:07 and 17:37 to 20:07, every 30 minutes around them, every 2 hours at night) and the four context stretches at 13 times: 596 requests a day, 18,476 in a 31-day month against the free 20,000. Incidents are polled at the readings that fall on :07 and :37 (24 times a day, about 744 requests a month against the free 2,500) into an event log, in the private repository only. TomTom's incident request accepted the fields the collector asks for (checked 30 Sep; 229 incidents were active in the corridor box at 10:08 IST).
 
 Open items: store each stretch's shape and OpenLR code in the private repository (needs the token), Sarjapur Road, and a script that turns `links.csv` into the adjacency matrix for the models.
 
