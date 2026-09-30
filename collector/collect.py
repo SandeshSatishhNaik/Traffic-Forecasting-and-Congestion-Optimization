@@ -40,7 +40,7 @@ FLOW_FIELDS = [
     "seg_start_lat", "seg_start_lon", "seg_end_lat", "seg_end_lon",
 ]
 INCIDENT_FIELDS = [
-    "timestamp_utc", "timestamp_ist", "status", "incident_id", "category", "magnitude_of_delay",
+    "timestamp_utc", "timestamp_ist", "status", "event", "n_active", "incident_id", "category", "magnitude_of_delay",
     "start_time", "end_time", "from_place", "to_place", "road_numbers", "length_m", "delay_s",
     "probability", "number_of_reports", "lat", "lon",
 ]
@@ -66,9 +66,11 @@ Collected automatically by `collector/collect.py` (see the repository's default 
   request, so gaps are visible. `frc` is TomTom's road class (FRC0 = motorway ...).
   `seg_*` columns are the ends of the road segment TomTom matched to the point.
 - `weather/YYYY-MM.csv`: current weather at the centre of the corridor for each run.
-- `incidents/YYYY-MM.csv`: TomTom traffic incidents (accidents, jams, closures, road works) active
-  in the corridor's area, one row per incident at every half-hour poll. A row with an empty
-  `incident_id` and `status` ok means the poll worked and found none.
+- `incidents/YYYY-MM.csv`: TomTom traffic incidents (accidents, jams, closures, road works) in the
+  corridor's area, polled every half hour, as an event log: an `event` = `poll` row for every poll
+  (with `n_active`, so gaps are visible), `new` and `changed` rows with the incident's details, and
+  `ended` rows when an incident is no longer reported. `incidents/state.json` holds what was active
+  at the last poll.
 
 Timestamps are when the request was made, in UTC and IST.
 """
@@ -184,8 +186,7 @@ def first_coordinate(geometry):
 
 
 def collect_incidents(bbox, key, dry_run):
-    """Return one row per incident currently active in the bbox, or one status row on failure.
-    A successful poll with no incidents returns one row with an empty incident_id."""
+    """Return (status, rows): one row per incident currently active in the bbox."""
     if dry_run:
         items = [{"geometry": {"type": "Point", "coordinates": [77.65, 12.93]}, "properties": {
             "id": "dry-1", "iconCategory": 6, "magnitudeOfDelay": 2, "length": 500, "delay": 120}}]
@@ -195,22 +196,67 @@ def collect_incidents(bbox, key, dry_run):
                 "key": key, "bbox": bbox, "fields": INCIDENT_QUERY, "language": "en-GB",
                 "timeValidityFilter": "present"}, timeout=30).get("incidents", [])
         except urllib.error.HTTPError as e:
-            return [{"status": f"http_{e.code}"}]
+            return f"http_{e.code}", []
         except (urllib.error.URLError, TimeoutError, ValueError) as e:
-            return [{"status": f"error_{type(e).__name__}"}]
+            return f"error_{type(e).__name__}", []
     rows = []
     for it in items:
         p = it.get("properties", {})
         lat, lon = first_coordinate(it.get("geometry"))
         rows.append({
-            "status": "ok", "incident_id": p.get("id"),
+            "incident_id": p.get("id"),
             "category": INCIDENT_CATEGORIES.get(p.get("iconCategory"), p.get("iconCategory")),
             "magnitude_of_delay": p.get("magnitudeOfDelay"), "start_time": p.get("startTime"),
             "end_time": p.get("endTime"), "from_place": p.get("from"), "to_place": p.get("to"),
             "road_numbers": "|".join(p.get("roadNumbers") or []), "length_m": p.get("length"),
             "delay_s": p.get("delay"), "probability": p.get("probabilityOfOccurrence"),
             "number_of_reports": p.get("numberOfReports"), "lat": lat, "lon": lon})
-    return rows or [{"status": "ok", "incident_id": ""}]
+    return "ok", rows
+
+
+def incident_signature(row):
+    """What counts as a change worth a new log row (delay and report counts change every minute)."""
+    return "|".join(str(row.get(k)) for k in ("category", "magnitude_of_delay", "end_time"))
+
+
+def incident_log_rows(status, rows, state):
+    """Turn a poll into event rows and the new state {incident_id: signature}.
+
+    One row per poll (event `poll`, with the number of active incidents), plus a row for each
+    incident that is `new` or `changed`, and one for each that `ended` since the last poll.
+    A failed poll keeps the old state so nothing is reported as ended by mistake."""
+    if status != "ok":
+        return [{"status": status, "event": "poll"}], state
+    current = {r["incident_id"]: r for r in rows if r.get("incident_id")}
+    out = [{"status": "ok", "event": "poll", "n_active": len(current)}]
+    new_state = {}
+    for iid, r in current.items():
+        sig = incident_signature(r)
+        new_state[iid] = sig
+        if iid not in state:
+            out.append({"status": "ok", "event": "new", **r})
+        elif state[iid] != sig:
+            out.append({"status": "ok", "event": "changed", **r})
+    for iid in state:
+        if iid not in current:
+            out.append({"status": "ok", "event": "ended", "incident_id": iid})
+    return out, new_state
+
+
+def log_incidents(out_dir, month, stamp, bbox, key, dry_run):
+    path = os.path.join(out_dir, "incidents", f"{month}.csv")
+    state_path = os.path.join(out_dir, "incidents", "state.json")
+    try:
+        with open(state_path, encoding="utf-8") as f:
+            state = json.load(f)
+    except (OSError, ValueError):
+        state = {}
+    status, rows = collect_incidents(bbox, key, dry_run)
+    log, state = incident_log_rows(status, rows, state)
+    append_rows(path, INCIDENT_FIELDS, [{**stamp, **r} for r in log])
+    with open(state_path, "w", encoding="utf-8") as f:
+        json.dump(state, f, separators=(",", ":"))
+    return status, len(rows), sum(1 for r in log if r["event"] in ("new", "changed", "ended"))
 
 
 def incidents_check(segments, key):
@@ -225,9 +271,10 @@ def incidents_check(segments, key):
     keys = sorted({k for it in items for k in it.get("properties", {})})
     print(f"incident request ok: {len(items)} incidents in bbox {bbox}")
     print("property fields returned:", keys)
-    rows = collect_incidents(bbox, key, False)
-    print(f"parsed into {len(rows)} rows; statuses: {sorted({r['status'] for r in rows})}; "
-          f"with coordinates: {sum(1 for r in rows if r.get('lat') is not None)}")
+    status, rows = collect_incidents(bbox, key, False)
+    log, _ = incident_log_rows(status, rows, {})
+    print(f"parsed into {len(rows)} incidents (status {status}); with coordinates: "
+          f"{sum(1 for r in rows if r.get('lat') is not None)}; first poll logs {len(log)} rows")
 
 
 def maps_link(lat, lon):
@@ -290,10 +337,8 @@ def main():
                 [{**stamp, **collect_weather(lat, lon, args.dry_run)}])
 
     if args.incidents:
-        inc = collect_incidents(bbox_of_segments(segments), key, args.dry_run)
-        append_rows(os.path.join(args.out, "incidents", f"{month}.csv"), INCIDENT_FIELDS,
-                    [{**stamp, **r} for r in inc])
-        print(f"incidents: {inc[0]['status'] if inc[0]['status'] != 'ok' else sum(1 for r in inc if r.get('incident_id'))}")
+        st, n_now, n_events = log_incidents(args.out, month, stamp, bbox_of_segments(segments), key, args.dry_run)
+        print(f"incidents: {st}, {n_now} active, {n_events} new/changed/ended")
 
     readme = os.path.join(args.out, "README.md")
     if not os.path.exists(readme):
