@@ -32,7 +32,8 @@ import urllib.request
 TOMTOM_FLOW = "https://api.tomtom.com/traffic/services/4/flowSegmentData/absolute/{zoom}/json"
 OVERPASS_URLS = ("https://overpass.kumi.systems/api/interpreter",
                  "https://overpass-api.de/api/interpreter",
-                 "https://overpass.private.coffee/api/interpreter")
+                 "https://overpass.private.coffee/api/interpreter",
+                 "https://overpass.openstreetmap.fr/api/interpreter")
 R_EARTH = 6371008.8
 STEP_OUT_M = (30, 60, 120, 250)   # how far past a stretch end to look for the next stretch
 SIDE_M = (0, 12, -12)             # sideways nudges, for roads that curve at the junction
@@ -384,41 +385,56 @@ def request_point(flow, s):
 
 
 # --------------------------------------------------------------- OSM part
-_DEAD_INSTANCES = set()
+_PREFERRED = []
 
 
-def overpass(query, log, deadline=None):
-    """Run an Overpass query on the first instance that answers; instances that failed are skipped later."""
+def overpass(query, log, deadline=None, rounds=3):
+    """Run an Overpass query. Tries every instance (the last one that worked first), up to `rounds` times."""
     last = "no instance answered"
-    for url in OVERPASS_URLS:
-        if url in _DEAD_INSTANCES:
-            continue
-        if deadline and time.time() > deadline:
-            raise RuntimeError("OSM time budget used up")
-        try:
-            return http(url, data={"data": query}, timeout=90, tries=1)["elements"]
-        except RuntimeError as e:
-            last = f"{url.split('/')[2]}: {e}"
-            log(f"  overpass {last}")
-            if str(e) not in ("HTTP 429",):
-                _DEAD_INSTANCES.add(url)
+    for r in range(rounds):
+        for url in sorted(OVERPASS_URLS, key=lambda u: u not in _PREFERRED):
+            if deadline and time.time() > deadline:
+                raise RuntimeError("OSM time budget used up")
+            try:
+                els = http(url, data={"data": query}, timeout=150, tries=1)["elements"]
+                _PREFERRED[:] = [url]
+                return els
+            except RuntimeError as e:
+                last = f"{url.split('/')[2]}: {e}"
+                log(f"  overpass {last}")
+        time.sleep(10 * (r + 1))
     raise RuntimeError(last)
 
 
-def poly_arg(pts):
-    return ",".join(f"{la:.5f},{lo:.5f}" for la, lo in thin(pts, 40)[:400])
+def poly_arg(pts, min_m=120):
+    """Polyline as an Overpass coordinate list, thinned so long stretches stay cheap to query."""
+    return ",".join(f"{la:.5f},{lo:.5f}" for la, lo in thin(pts, min_m)[:250])
 
 
 CAR_ROADS = ("motorway", "trunk", "primary", "secondary", "tertiary", "unclassified", "residential",
              "motorway_link", "trunk_link", "primary_link", "secondary_link", "tertiary_link", "living_street")
-POI_COUNTS = [
-    ("schools", 'nwr["amenity"~"^(school|college|university)$"]'),
-    ("hospitals", 'nwr["amenity"="hospital"]'),
-    ("malls", 'nwr["shop"~"^(mall|supermarket)$"]'),
-    ("offices", 'nwr["office"]'),
-    ("bus_stops", 'nwr["highway"="bus_stop"]'),
-    ("metro", 'nwr["railway"~"^(station|subway_entrance)$"]["station"!~"^(light_rail|train)$"]'),
-]
+POI_KEYS = ["schools", "hospitals", "malls", "offices", "bus_stops", "metro"]
+POI_QUERY = ('nwr["amenity"~"^(school|college|university|hospital)$"]({bb});'
+             'nwr["shop"~"^(mall|supermarket)$"]({bb});nwr["office"]({bb});nwr["highway"="bus_stop"]({bb});'
+             'nwr["railway"~"^(station|subway_entrance)$"]({bb});')
+
+
+def poi_class(tags):
+    """Which of POI_KEYS an OSM element counts for, or None."""
+    a = tags.get("amenity")
+    if a in ("school", "college", "university"):
+        return "schools"
+    if a == "hospital":
+        return "hospitals"
+    if tags.get("shop") in ("mall", "supermarket"):
+        return "malls"
+    if "office" in tags:
+        return "offices"
+    if tags.get("highway") == "bus_stop":
+        return "bus_stops"
+    if tags.get("railway") in ("station", "subway_entrance") and tags.get("station") not in ("light_rail", "train"):
+        return "metro"
+    return None
 
 
 def _maxspeed(v):
@@ -428,39 +444,59 @@ def _maxspeed(v):
         return None
 
 
-def osm_features(stretches, log, pause=1.0, budget_s=1200):
-    """Two Overpass queries per stretch: roads + signals, then the point-of-interest counts."""
-    rows, deadline = [], time.time() + budget_s
+def _in_box(p, box):
+    return box[0] <= p[0] <= box[2] and box[1] <= p[1] <= box[3]
+
+
+def osm_features(stretches, log, pause=1.0, budget_s=1500):
+    """Signals and points of interest for the whole corridor in two requests, roads once per stretch."""
+    deadline = time.time() + budget_s
+    south, west, north, east = bbox_of([p for s in stretches for p in s["pts"]], 500)
+    bb = f"{south:.5f},{west:.5f},{north:.5f},{east:.5f}"
+    sigs, pois = None, None
+    try:
+        els = overpass(f'[out:json][timeout:120];(node["highway"="traffic_signals"]({bb});'
+                       f'node["crossing"="traffic_signals"]({bb}););out;', log, deadline)
+        sigs = [(e["lat"], e["lon"]) for e in els if e["type"] == "node"]
+        log(f"  {len(sigs)} traffic-signal nodes in the corridor box")
+        time.sleep(pause)
+        els = overpass(f'[out:json][timeout:150];({POI_QUERY.format(bb=bb)});out center tags;', log, deadline)
+        pois = []
+        for e in els:
+            c = poi_class(e.get("tags", {}))
+            pt = (e["lat"], e["lon"]) if "lat" in e else ((e["center"]["lat"], e["center"]["lon"]) if "center" in e else None)
+            if c and pt:
+                pois.append((c, pt))
+        log(f"  {len(pois)} points of interest in the corridor box")
+    except (RuntimeError, KeyError, ValueError) as e:
+        log(f"  corridor-wide OSM query failed ({e})")
     roads = "|".join(CAR_ROADS)
-    pois = "".join(f'{sel}(around:300,{{arg}});out count;' for _, sel in POI_COUNTS)
+    rows = []
     for s in stretches:
-        arg = poly_arg(s["pts"])
         km = s["len_m"] / 1000
         f = {"segment_id": s["id"], "length_km": round(km, 3), "frc": s["frc"]}
-        try:
-            els = overpass(f'[out:json][timeout:90];(way(around:35,{arg})["highway"~"^({roads})$"];>;);out body;'
-                           f'(node(around:30,{arg})["highway"="traffic_signals"];'
-                           f'node(around:30,{arg})["crossing"="traffic_signals"];);out;', log, deadline)
-            time.sleep(pause)
-            nodes = {e["id"]: (e["lat"], e["lon"]) for e in els if e["type"] == "node"}
-            ways = [e for e in els if e["type"] == "way"]
-            f.update(_road_tags(s, ways, nodes))
-            sigs = {e["id"]: (e["lat"], e["lon"]) for e in els if e["type"] == "node" and (
-                e.get("tags", {}).get("highway") == "traffic_signals"
-                or e.get("tags", {}).get("crossing") == "traffic_signals")}
-            pts = list(sigs.values())
-            near = [p for p in pts if dist_to_poly_m(p, s["pts"])[0] <= 30]
+        if sigs is not None:
+            box = bbox_of(s["pts"], 60)
+            near = [p for p in sigs if _in_box(p, box) and dist_to_poly_m(p, s["pts"])[0] <= 30]
             f["signals"] = len(near)
             f["signals_per_km"] = round(len(near) / km, 2) if km else ""
-            f["dist_signal_start_m"] = round(min((hav_m(s["pts"][0], p) for p in pts), default=-1))
-            f["dist_signal_end_m"] = round(min((hav_m(s["pts"][-1], p) for p in pts), default=-1))
-            cnt = overpass("[out:json][timeout:90];" + pois.format(arg=arg), log, deadline)
+            f["dist_signal_start_m"] = round(min((hav_m(s["pts"][0], p) for p in sigs), default=-1))
+            f["dist_signal_end_m"] = round(min((hav_m(s["pts"][-1], p) for p in sigs), default=-1))
+        if pois is not None:
+            box = bbox_of(s["pts"], 350)
+            cnt = dict.fromkeys(POI_KEYS, 0)
+            for c, p in pois:
+                if _in_box(p, box) and dist_to_poly_m(p, s["pts"])[0] <= 300:
+                    cnt[c] += 1
+            f.update(cnt)
+        try:
+            els = overpass(f'[out:json][timeout:120];(way(around:45,{poly_arg(s["pts"])})["highway"~"^({roads})$"];>;);out body;',
+                           log, deadline)
             time.sleep(pause)
-            counts = [c for c in cnt if c.get("type") == "count"]
-            for (key, _), c in zip(POI_COUNTS, counts):
-                f[key] = int(c["tags"]["total"])
+            nodes = {e["id"]: (e["lat"], e["lon"]) for e in els if e["type"] == "node"}
+            f.update(_road_tags(s, [e for e in els if e["type"] == "way"], nodes))
         except (RuntimeError, KeyError, ValueError) as e:
-            log(f"  {s['id']}: OSM query failed ({e})")
+            log(f"  {s['id']}: road query failed ({e})")
         rows.append(f)
         log(f"  {s['id']}: OSM features done")
     return rows
@@ -588,13 +624,11 @@ def report(stretches, links, feats):
     for s in stretches:
         f = next((x for x in feats if x["segment_id"] == s["id"]), {})
         rq = s.get("req")
-        seg_rows.append({"segment_id": s["id"], "name": f.get("osm_name") or s["route"],
-                         "road": f.get("osm_name") or s["route"],
+        road = f.get("osm_name") or s["route"]
+        seg_rows.append({"segment_id": s["id"], "name": f"{road} ({s['route']} #{s['seq']})", "road": road,
                          "lat": f"{rq[0]:.6f}" if rq else "", "lon": f"{rq[1]:.6f}" if rq else "",
-                         "osm_way_id": f.get("osm_way_id", ""), "route": s["route"], "tier": s["tier"], "seq": s["seq"],
-                         "length_km": round(s["len_m"] / 1000, 3), "frc": s["frc"],
-                         "start_lat": f"{s['pts'][0][0]:.5f}", "start_lon": f"{s['pts'][0][1]:.5f}",
-                         "end_lat": f"{s['pts'][-1][0]:.5f}", "end_lon": f"{s['pts'][-1][1]:.5f}"})
+                         "osm_way_id": f.get("osm_way_id", ""), "route": s["route"], "tier": s["tier"],
+                         "seq": s["seq"], "length_km": round(s["len_m"] / 1000, 3), "frc": s["frc"]})
     emit("segments.csv", to_csv(seg_rows, list(seg_rows[0]) if seg_rows else []))
     alias = [{"old_id": old, "new_id": next((s["id"] for s in stretches if s["legacy"] == old), ""), "note": why}
              for old, why in RENAMED.items()]

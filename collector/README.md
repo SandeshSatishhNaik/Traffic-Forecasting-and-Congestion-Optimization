@@ -38,30 +38,28 @@ GitHub's cron scheduler does not reliably start scheduled runs on new repositori
 
 ## Schedule and budget
 
-Collection runs 24/7, densest when traffic changes fastest (times in IST):
+Two tiers of stretches (the `tier` column of `segments.csv`), read at different times (IST). The times are on the 15-minute slot grid the chain wakes at.
 
-| Time | Interval | Readings a day |
-|---|---|---|
-| 07:07–11:07 (morning rush) | every 15 min | 17 |
-| 11:37–15:37 (midday) | every 30 min | 9 |
-| 16:07–21:07 (evening rush) | every 15 min | 21 |
-| 22:07–06:07 (night) | every hour | 9 |
+| Tier | Stretches | Read at | Readings a day |
+|---|---|---|---|
+| core (the Outer Ring Road, both directions) | 17 | every 15 min 08:07-10:07 and 17:37-20:07; every 30 min 07:07-07:37, 10:37, 16:37-17:07, 20:37; 12:07 and 14:07; every 2 hours at night (22:07, 00:07, 02:07, 04:07, 06:07) | 32 |
+| context (Hosur Road, the two long Old Airport / Varthur Road stretches) | 4 | 07:07, 08:07, 09:07, 10:07, 12:07, 14:07, 17:07, 18:07, 19:07, 20:07, 22:07, 02:07, 06:07 | 13 |
 
-56 readings a day × 10 roads × 31 days = 17,360 requests a month. The TomTom free tier is 20,000 Flow Segment requests a month, leaving room for about 260 manual test runs. Every 15 minutes around the clock would need 29,760, which is why midday and night are sparser; traffic changes slowly then. For modelling, resample to a regular 15-minute grid and interpolate the sparse hours.
-
-Before adding segments, check the total with:
+17 × 32 + 4 × 13 = 596 TomTom requests a day, 18,476 in a 31-day month. The free tier is 20,000 Flow Segment requests a month, leaving about 1,500 for test runs (the network builder uses about 200). The list of times is `CORE_TIMES` and `CONTEXT_TIMES` in `collector/loop.sh`; change them there and re-check the total with:
 
 ```
 TOMTOM_API_KEY=your_key python collector/collect.py --check
 ```
 
-This makes one request per segment, prints Google Maps links for the point you chose and the road TomTom matched, and shows the monthly total. It writes no files.
+(`--check` makes one request per segment, prints Google Maps links for the point you chose and the road TomTom matched, and writes no files.) For modelling, resample to a regular 15-minute grid and interpolate the sparse hours. Every 15 minutes around the clock for 21 stretches would need 65,000 requests a month.
 
 ## The segments
 
-`segments.csv` covers the Outer Ring Road from Silk Board to Mahadevapura, plus the roads people use instead of it: Hosur Road, Sarjapur Road, HAL Old Airport Road and Varthur Road. Coordinates are points on each road taken from OpenStreetMap. To use a different corridor, replace the rows: right-click a road in Google Maps to copy its coordinates.
+`segments.csv` has one row per TomTom stretch: `segment_id`, `name`, `road`, the request point (`lat`, `lon`, a point on the stretch that TomTom maps back to the same stretch), `route`, `tier`, `seq` (position along the route), `length_km`, `frc`. It is written by the network builder (next section), which also lists which stretch leads into which (`collector/network/links.csv`) and the OpenStreetMap features of each stretch (`collector/network/features.csv`).
 
-The Outer Ring Road is a divided road, so each point measures one direction of travel. The `seg_start_*` and `seg_end_*` columns show which direction TomTom matched.
+The first ten segments used points chosen by hand. Nine of them are stretches of the new network under the same id. `sarjapur_agara` was labelled Sarjapur Road, but TomTom matched the Outer Ring Road eastbound near Agara, so it is now `orr_ccw_03` (`collector/network/legacy_ids.csv`).
+
+To use a different corridor, add a route to `ROUTES` in `build_network.py` (a seed point on the road and a target to stop at) and run the workflow **Build road network**.
 
 ## Building the road network
 
