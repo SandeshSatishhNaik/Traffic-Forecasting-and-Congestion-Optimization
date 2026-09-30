@@ -1,0 +1,34 @@
+name: Build road network
+
+# One-off: walks the road with TomTom Flow Segment requests (about 150), links
+# the stretches and adds OpenStreetMap features (see collector/build_network.py).
+# Prints segments.csv, links.csv and features.csv to the log: road layout and
+# open map data, no speeds. Separate from the collection chain.
+
+on:
+  workflow_dispatch:
+    inputs:
+      verbose:
+        description: "Print every probe of the walk"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-network
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build the network
+        env:
+          TOMTOM_API_KEY: ${{ secrets.TOMTOM_API_KEY }}
+          DATA_REPO_TOKEN: ${{ secrets.DATA_REPO_TOKEN }}
+        run: python3 collector/build_network.py ${{ inputs.verbose && '--verbose' || '' }}
