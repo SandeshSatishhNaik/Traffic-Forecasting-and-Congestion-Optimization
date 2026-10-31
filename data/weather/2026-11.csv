@@ -1,2 +1,3 @@
 timestamp_utc,timestamp_ist,status,temperature_c,precipitation_mm,rain_mm,weather_code,cloud_cover_pct
 2026-10-31T18:37:00Z,2026-11-01 00:07:00,ok,21.0,0.0,0.0,0,4
+2026-10-31T20:37:00Z,2026-11-01 02:07:00,ok,20.5,0.0,0.0,0,15
