@@ -29,7 +29,7 @@ def r1(x):
     return None if x is None or (isinstance(x, float) and np.isnan(x)) else round(float(x), 1)
 
 
-def build(pkl, out):
+def build(pkl, out, tuning=None, final=None):
     D = pd.read_pickle(pkl)
     F, grid, ref, T = D["F"], D["grid"], D["ref"], D["T"]
     seg = pd.read_csv(prepare.SEGMENTS_CSV).set_index("segment_id")
@@ -52,7 +52,14 @@ def build(pkl, out):
             m["trips"][x["trip"]] = {k: r1(x[k]) for k in ("actual", "current", "historical", "forecast")}
         moments.append(m)
     data = dict(moments=moments, ref={k: r1(v) for k, v in ref.items()}, length={k: float(v) for k, v in seg["length_km"].items()},
-                chains=CHAINS, label=LABEL, mae={"15": 2.98, "30": 3.38, "60": 3.51}, base={"15": 3.16, "30": 3.91, "60": 4.42})
+                chains=CHAINS, label=LABEL, mae={"15": 2.99, "30": 3.33, "60": 3.46}, base={"15": 3.16, "30": 3.91, "60": 4.42})
+    if tuning:
+        T_ = json.load(open(tuning))
+        data["tuning"] = dict(trials=[dict(name=r["name"], v=round(r["val_mean"], 3), hp=r["hp"]) for r in T_["results"]], best=T_["best"]["name"],
+                              best_hp=T_["best_hp"], default_hp=T_["default"]["hp"], curves=T_["curves"], space=T_["space"], val=T_["tune_val"],
+                              best_v=round(T_["best"]["val_mean"], 3), default_v=round(T_["default"]["val_mean"], 3))
+    if final:
+        data["final"] = json.load(open(final))
     html = TEMPLATE.replace("__DATA__", json.dumps(data, separators=(",", ":")))
     open(out, "w", encoding="utf-8").write(html)
     return len(moments)
@@ -82,12 +89,14 @@ ul{margin:6px 0 0 18px;padding:0}.note{color:var(--mut);font-size:13px;margin-to
 </style></head><body>
 <header><h1>Traffic Forecast Replay: Bengaluru Outer Ring Road</h1>
 <div class="sub">21 road stretches, speeds from TomTom. Replays real moments from the test week (25 to 31 October 2026): the forecast made at that moment next to what actually happened.</div></header>
-<div class="bar">
+<div class="bar"><div class="grp"><button id="tabA" class="on">Replay</button><button id="tabB">Model training</button></div>
+<span id="replayBar" style="display:contents">
 <div class="grp"><b>Moment</b><select id="mom"></select></div>
 <div class="grp"><b>Show</b><button data-k="now">Now</button><button data-k="f15">Forecast +15</button><button data-k="f30">Forecast +30</button><button data-k="f60">Forecast +60</button></div>
 <div class="grp"><b>Compare with</b><button data-c="a">Actual later</button></div>
-</div>
-<main><section class="card" id="map"></section>
+</span></div>
+<section id="train" style="display:none;padding:6px 24px 24px"></section>
+<main id="replay"><section class="card" id="map"></section>
 <aside><div class="card"><h2>Early warnings</h2><div id="alerts"></div></div>
 <div class="card" style="margin-top:16px"><h2>Trip time (minutes)</h2><div id="trip"></div></div>
 <div class="card" style="margin-top:16px"><h2>Model error (test week, MAE km/h)</h2><div id="err"></div></div></aside></main>
@@ -115,6 +124,22 @@ const tr=Object.entries(m.trips);$("#trip").innerHTML=tr.length?tr.map(([n,x])=>
 return `<div style="margin-bottom:10px"><b style="font-size:13px">${n}</b><table>`+rows.map(([l,v])=>`<tr><td>${l}</td><td class="n ${l=="Actual"?"best":""}">${v==null?"-":v.toFixed(1)}</td></tr>`).join("")+`</table></div>`}).join(""):"<div class='note'>No complete trip data at this moment.</div>";
 $("#err").innerHTML=`<table><tr><th>Horizon</th><th class="n">Repeat speed</th><th class="n">Graph model</th></tr>`+["15","30","60"].map(k=>`<tr><td>+${k} min</td><td class="n">${D.base[k].toFixed(2)}</td><td class="n best">${D.mae[k].toFixed(2)}</td></tr>`).join("")+`</table><div class="note">Lower is better. 5 seeds, 7 test days.</div>`}
 draw();
+function svgLines(series,w,h,ymin,ymax,labels){const pad=34,xs=n=>pad+(w-pad-8)*n/(series[0].length-1),ys=v=>h-22-(h-34)*(v-ymin)/(ymax-ymin);let o=`<svg viewBox="0 0 ${w} ${h}" width="100%">`;for(let i=0;i<=4;i++){const v=ymin+(ymax-ymin)*i/4;o+=`<line x1="${pad}" x2="${w-8}" y1="${ys(v)}" y2="${ys(v)}" stroke="var(--line)"/><text x="2" y="${ys(v)+4}" font-size="10" fill="var(--mut)">${v.toFixed(1)}</text>`}
+const cols=["var(--acc)","var(--a)","var(--g)","var(--r)"];series.forEach((s,i)=>{o+=`<polyline fill="none" stroke="${cols[i]}" stroke-width="2.2" points="${s.map((v,k)=>xs(k)+","+ys(v)).join(" ")}"/>`;o+=`<text x="${pad+4+i*118}" y="12" font-size="10.5" fill="${cols[i]}" font-weight="700">${labels[i]}</text>`});return o+"</svg>"}
+function drawTrain(){const t=D.tuning,f=D.final;if(!t){$("#train").innerHTML="<div class='card'>No tuning data in this file.</div>";return}
+const SK=4,c=t.curves,cl=a=>a.slice(SK).map(x=>x[0]),vl=a=>a.slice(SK).map(x=>x[1]);
+const all=[...cl(c.default),...vl(c.default),...cl(c.tuned),...vl(c.tuned)];const lo=Math.floor(Math.min(...all)*2)/2,hi=Math.ceil(Math.max(...all)*2)/2;
+const tr=[...t.trials].sort((a,b)=>a.v-b.v);const mn=tr[0].v,mx=tr[tr.length-1].v;
+const hpTxt=h=>`hidden ${h.hid}, embedding ${h.emb}, dropout ${h.drop}, learning rate ${h.lr}, weight decay ${h.wd}, batch ${h.batch}, input lags ${h.lags}`;
+let h=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px">`;
+h+=`<div class="card"><h2>Learning curves (60-min model)</h2>${svgLines([cl(c.default),vl(c.default),cl(c.tuned),vl(c.tuned)],520,250,lo,hi,["default: train","default: valid.","tuned: train","tuned: valid."])}<div class="note">Mean absolute error in % of normal speed, per training round (rounds 5 to 60 shown; the final model keeps the best validation round). Train and validation errors close together means no heavy over-fitting.</div></div>`;
+h+=`<div class="card"><h2>Tuning: ${t.trials.length} configurations</h2><div style="display:flex;align-items:flex-end;gap:3px;height:150px">${tr.map(x=>{const hh=140*x.v/mx;return `<div title="${x.name}: ${x.v}%" style="flex:1;height:${hh}px;background:${x.name==t.best?"var(--g)":x.name=="default"?"var(--a)":"var(--na)"};border-radius:3px 3px 0 0"></div>`}).join("")}</div><div class="note">Validation error of every configuration, best on the left (green = chosen, amber = starting point; bars start at zero). Best ${t.best_v}% vs default ${t.default_v}%: settings matter little here; most of the gain comes from the road graph.</div></div>`;
+h+=`<div class="card"><h2>Setup</h2><table><tr><td>Default</td><td>${hpTxt(t.default_hp)}</td></tr><tr><td>Chosen</td><td><b>${hpTxt(t.best_hp)}</b></td></tr><tr><td>Search</td><td>random, ${t.trials.length-1} trials, 3 seeds each, 3 horizons</td></tr><tr><td>Tuning split</td><td>train before ${t.val[0]}, validate ${t.val[0]} to ${t.val[1]}; the test week was never used</td></tr></table></div>`;
+if(f){h+=`<div class="card"><h2>Test week result (MAE km/h, 5 seeds)</h2><table><tr><th>Horizon</th><th class="n">Repeat speed</th><th class="n">Default net</th><th class="n">Tuned net</th></tr>${["15","30","60"].map(k=>`<tr><td>+${k} min</td><td class="n">${f.base[k].toFixed(2)}</td><td class="n">${f.default[k].toFixed(2)}</td><td class="n best">${f.tuned[k].toFixed(2)}</td></tr>`).join("")}</table><div class="note">${f.note}</div></div>`}
+$("#train").innerHTML=h+"</div>"}
+function tab(b){$("#tabA").classList.toggle("on",!b);$("#tabB").classList.toggle("on",b);$("#replay").style.display=b?"none":"";$("#replayBar").style.display=b?"none":"contents";$("#train").style.display=b?"":"none";if(b)drawTrain()}
+$("#tabA").onclick=()=>tab(false);$("#tabB").onclick=()=>tab(true);
+
 </script></body></html>
 """
 
@@ -122,5 +147,7 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--demo", required=True)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--tuning", default=None, help="tuning.json from tune.py")
+    ap.add_argument("--final", default=None, help="json with the final tuned/default test numbers")
     a = ap.parse_args()
-    print(build(a.demo, a.out), "moments")
+    print(build(a.demo, a.out, a.tuning, a.final), "moments")

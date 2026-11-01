@@ -27,7 +27,9 @@ def metrics(y, p):
     return dict(MAE=np.abs(e).mean(), RMSE=np.sqrt((e ** 2).mean()), MAPE=100 * (np.abs(e[ok]) / y[ok]).mean())
 
 
-def run(data_dir, test_days=7, val_days=7):
+def run(data_dir, test_days=7, val_days=7, hp=None):
+    if hp:
+        stgnn.configure(**hp)
     df, ids = prepare.load_flow(data_dir)
     grid = prepare.speed_grid(df, ids)
     weather = baselines.load_weather(data_dir)
@@ -128,9 +130,12 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--data-dir", required=True)
     ap.add_argument("--out", default=None)
+    ap.add_argument("--hp-json", default=None, help="JSON file with tuned hyper-parameters (from tune.py)")
     ap.add_argument("--save-rows", default=None, help="pickle of per-row predictions (not for the repository)")
     a = ap.parse_args()
-    info, res, rows = run(a.data_dir)
+    import json
+    hp = json.load(open(a.hp_json))["best_hp"] if a.hp_json else None
+    info, res, rows = run(a.data_dir, hp=hp)
     md = to_markdown(info, res)
     print(md)
     if a.out:

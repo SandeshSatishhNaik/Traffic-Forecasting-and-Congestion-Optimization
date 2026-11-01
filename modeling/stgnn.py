@@ -21,7 +21,15 @@ import torch.nn as nn
 import prepare
 
 LAGS = 3
+DEFAULT_HP = dict(hid=32, emb=8, drop=0.1, lr=3e-3, wd=1e-4, batch=64, lags=3)
 VARIANTS = ("none", "graph", "adaptive")
+
+
+def configure(**hp):
+    """Set the hyper-parameters used by every later call (including the number of input lags)."""
+    global LAGS
+    DEFAULT_HP.update(hp)
+    LAGS = int(DEFAULT_HP["lags"])
 
 
 def norm_adj(A):
@@ -54,7 +62,7 @@ def make_tensors(grid, ref, weather, h):
 
 
 class Net(nn.Module):
-    def __init__(self, A, variant, c_in, hid=32, emb=8):
+    def __init__(self, A, variant, c_in, hid=32, emb=8, drop=0.1):
         super().__init__()
         N = A.shape[0]
         self.variant = variant
@@ -66,7 +74,7 @@ class Net(nn.Module):
         self.l1s, self.l1n = nn.Linear(c_in + emb, hid), nn.Linear(c_in + emb, hid, bias=False)
         self.l2s, self.l2n = nn.Linear(hid, hid), nn.Linear(hid, hid, bias=False)
         self.out = nn.Linear(hid + c_in, 1)
-        self.drop = nn.Dropout(0.1)
+        self.drop = nn.Dropout(drop)
 
     def adj(self):
         if self.variant == "adaptive":
@@ -87,28 +95,33 @@ def masked_l1(p, y, m):
     return ((p - y).abs() * m).sum() / m.sum().clamp(min=1)
 
 
-def train_predict(tr, va, te, A, variant, seed, epochs=200, patience=25):
+def train_predict(tr, va, te, A, variant, seed, epochs=200, patience=25, hp=None, history=None):
+    hp = {**DEFAULT_HP, **(hp or {})}
     torch.manual_seed(seed)
     np.random.seed(seed)
     f = lambda a: torch.tensor(a)
     Xtr, Ytr, Mtr = f(tr[0]), f(tr[1]), f(tr[2].astype(np.float32))
     Xva, Yva, Mva = f(va[0]), f(va[1]), f(va[2].astype(np.float32) * va[3][:, :].astype(np.float32))
-    net = Net(A, variant, Xtr.shape[-1])
-    opt = torch.optim.Adam(net.parameters(), lr=3e-3, weight_decay=1e-4)
+    net = Net(A, variant, Xtr.shape[-1], hid=hp["hid"], emb=hp["emb"], drop=hp["drop"])
+    opt = torch.optim.Adam(net.parameters(), lr=hp["lr"], weight_decay=hp["wd"])
     best, best_state, bad = 1e9, None, 0
     n = len(Xtr)
     for ep in range(epochs):
         net.train()
         perm = torch.randperm(n)
-        for i in range(0, n, 64):
-            b = perm[i:i + 64]
+        tot = 0.0
+        for i in range(0, n, hp["batch"]):
+            b = perm[i:i + hp["batch"]]
             opt.zero_grad()
             loss = masked_l1(net(Xtr[b]), Ytr[b], Mtr[b])
             loss.backward()
             opt.step()
+            tot += loss.item() * len(b)
         net.eval()
         with torch.no_grad():
             v = masked_l1(net(Xva), Yva, Mva).item()
+        if history is not None:
+            history.append((tot / n, v))
         if v < best - 1e-5:
             best, bad = v, 0
             best_state = {k: x.clone() for k, x in net.state_dict().items()}

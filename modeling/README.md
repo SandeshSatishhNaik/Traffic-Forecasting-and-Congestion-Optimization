@@ -28,3 +28,5 @@ Only pairs of slots where both readings exist are scored, and every model is sco
 - `results/phase2-alerts-trips-2026-11-01.md`: alert and trip-time results (aggregate numbers).
 
 Order: `evaluate.py --save-rows rows.pkl`, `alerts.py --rows rows.pkl`, `routing.py --save demo.pkl`, `demo_dashboard.py --demo demo.pkl --out dashboard.html`. Python 3.11 with pandas, numpy, scikit-learn and torch.
+- : random hyper-parameter search with 3 seeds per configuration, using only data before the test week; writes  (settings, scores, learning curves).  and  then use the chosen settings.
+-  / : the search;  and : final results with tuned settings.

@@ -10,6 +10,7 @@ vehicle actually experienced (stepping through the real speeds, interpolated bet
 """
 import argparse
 import heapq
+import json
 
 import numpy as np
 import pandas as pd
@@ -167,6 +168,7 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--data-dir", required=True)
     ap.add_argument("--out", default=None)
+    ap.add_argument("--hp-json", default=None, help="tuned hyper-parameters from tune.py")
     ap.add_argument("--save", default=None, help="pickle with forecasts for the demo (not for the repository)")
     a = ap.parse_args()
     df, ids = prepare.load_flow(a.data_dir)
@@ -177,6 +179,8 @@ if __name__ == "__main__":
     val_start = test_start - pd.Timedelta(days=7)
     test_end = last_full + pd.Timedelta("1D")
     ref = prepare.free_flow_reference(grid, val_start)
+    if a.hp_json:
+        stgnn.configure(**json.load(open(a.hp_json))["best_hp"])
     F = train_forecasts(grid, ref, weather, val_start, test_start, test_end)
     hist = hist_table(grid, test_start)
     T = evaluate_trips(grid, ref, weather, F, hist, test_start, test_end)
