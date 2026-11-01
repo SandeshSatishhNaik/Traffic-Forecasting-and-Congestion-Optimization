@@ -51,7 +51,7 @@ def metrla_windows(metrla_dir, offsets=(0, 1, 2)):
         d = dict(V=V, M=MM, tod=tod, dt=dto[idx], Y=Y, YM=YM, last_present=M[idx])
         cut_tr, cut_va = int(0.7 * len(idx)), int(0.8 * len(idx))
         parts["train"].append({k: v[:cut_tr] for k, v in d.items()})
-        parts["val"].append({k: v[cut_tr:cut_va] for k, v in d.items()})
+        parts["val"].append({k: v[cut_tr:cut_va:4] for k, v in d.items()})   # every 4th window: keeps evaluation small
     cat = lambda L: {k: np.concatenate([p[k] for p in L]) for k in L[0]}
     return cat(parts["train"]), cat(parts["val"]), W
 

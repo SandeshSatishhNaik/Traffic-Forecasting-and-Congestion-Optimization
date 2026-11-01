@@ -1,7 +1,29 @@
 # Alternative roads (for real route choice)
 
-**Status: built and checked, not collected yet.** `segments.csv` and `loop.sh` are unchanged, so the live
-collection is exactly as before.
+**Status: first build run, result NEGATIVE. Not ready to collect.** `segments.csv` and `loop.sh` are
+unchanged, so the live collection is exactly as before.
+
+## First verification run (GitHub Actions, 64 TomTom requests)
+
+5 of 13 stretches matched the expected road name; the rest were wrong seeds or unnamed side roads.
+The ones that matched are almost all far too long for route choice:
+
+| Stretch | OpenStreetMap road | Length | Usable? |
+|---|---|---|---|
+| sarjapur_w_02 | Sarjapura Road | 16.2 km | coarse; one number for the whole road |
+| whitefield_03 | Whitefield Road | 13.9 km | too coarse |
+| old_madras_03 / _05 | Old Madras Road | 19.6 / 23.1 km | too coarse |
+| old_madras_04 | Old Madras Road | 0.1 km | too short to matter |
+| sarjapur_w_03/04, whitefield_01 | Outer Ring Road | 0.2-1.0 km | the walk strayed back onto the ORR |
+| sarjapur_e_*, whitefield_02, old_madras_01 | no OSM name | | wrong seed or a side street |
+
+Why: TomTom cuts a road into its own traffic segments. Highways and main roads come back as one long
+segment, and we cannot cut them shorter. So seeds picked from memory are not enough. Next step: pick
+2-3 points per road on a **short, busy** piece (Google Maps: right-click, copy coordinates), put them in
+`ROUTES_ALT`, run the build again and keep only stretches that print `VERIFY OK` and are under about 5 km.
+The build also tried to save geometry in the private data repository and got HTTP 403, the same
+`DATA_REPO_TOKEN` permission problem as the migration (token needs Contents read/write on that repo).
+
 
 ## Why
 
