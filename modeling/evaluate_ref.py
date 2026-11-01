@@ -68,7 +68,7 @@ def run(data_dir, rows, test_days=7, val_days=7, kinds=("gwn", "stid"), seeds=SE
 
 
 def table(rows, kinds, extra=("Persistence (last value)", "Gradient boosting (all roads)", "GCN: none", "GCN: graph")):
-    LAB = {"gwn": "Graph WaveNet (re-implemented)", "stid": "STID (re-implemented)", "stid_pre": "STID, pretrained on METR-LA, all weights fine-tuned", "stid_frozen": "STID, pretrained on METR-LA, trunk frozen", "GCN: none": "Our net, no graph", "GCN: graph": "Our net + road graph"}
+    LAB = {"gwn": "Graph WaveNet (re-implemented)", "stid": "STID (re-implemented)", "stid_pre": "STID, pretrained on METR-LA, all weights fine-tuned", "stid_frozen": "STID, pretrained on METR-LA, trunk frozen", "stid_ctrl": "STID from scratch, fine-tuning settings (control)", "GCN: none": "Our net, no graph", "GCN: graph": "Our net + road graph"}
     L = ["| Horizon | Model | MAE (km/h) | RMSE (km/h) | MAPE (%) | rows |", "|---|---|---|---|---|---|"]
     for h in HOR:
         r = rows[h]
