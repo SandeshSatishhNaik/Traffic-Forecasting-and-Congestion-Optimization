@@ -16,3 +16,9 @@ python modeling/baselines.py --data-dir ../data-snapshot/data --out modeling/res
 - `results/`: aggregate metrics (MAE, RMSE, MAPE) per run.
 
 Only pairs of slots where both readings exist are scored, and every model is scored on the same rows. Normalisation and the historical average use earlier days only, so nothing from the future leaks in. Holidays are listed in `prepare.py` (`HOLIDAYS`, currently 2 Oct 2026); add more as they come.
+
+## Phase 2: graph models
+
+- `stgnn.py`: small spatio-temporal graph network (two graph-convolution layers) with three variants that differ only in the graph: none, road graph, road graph plus learned graph.
+- `evaluate.py`: trains them 5 times each and scores them with the baselines on identical rows: `python modeling/evaluate.py --data-dir <folder> --out modeling/results/phase2.md`. Needs `torch`.
+- `results/phase2-models-2026-11-01.md`: the results (aggregate numbers only).

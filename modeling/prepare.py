@@ -17,7 +17,9 @@ SEGMENTS_CSV = os.path.join(HERE, "..", "collector", "segments.csv")
 LINKS_CSV = os.path.join(HERE, "..", "collector", "network", "links.csv")
 LEGACY_IDS = {"sarjapur_agara": "orr_ccw_03"}   # see collector/network/legacy_ids.csv
 FIRST_READING = "2026-09-30 10:40"              # first reading of the 21-stretch network
-HOLIDAYS = {"2026-10-02"}                       # Gandhi Jayanti (a Friday)
+# Gandhi Jayanti (2 Oct) and the Dasara days 19-21 Oct. The Dasara days are weekdays on which the Outer Ring Road
+# ran at weekend speeds (rush-hour speed ratio 0.88-0.95 against 0.63-0.72 on ordinary weekdays), which confirms them.
+HOLIDAYS = {"2026-10-02", "2026-10-19", "2026-10-20", "2026-10-21"}
 SLOT_MIN = 15
 SLOT_OFFSET_MIN = 7                             # the collector wakes at :07, :22, :37, :52 (IST)
 
