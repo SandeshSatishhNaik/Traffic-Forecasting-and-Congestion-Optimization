@@ -120,3 +120,21 @@ def train_predict(tr, va, te, A, variant, seed, epochs=200, patience=25):
     net.eval()
     with torch.no_grad():
         return net(f(te[0])).numpy(), best, ep
+
+
+def make_inputs(grid, ref, weather):
+    """Inputs for every slot (no target needed): X (S,N,C) and the slot times, for forecasting from `t`."""
+    S = (grid / ref).clip(0, 1.5).values.astype(np.float32)
+    M = ~np.isnan(S)
+    Sf = np.where(M, S, 1.0).astype(np.float32)
+    T, N = S.shape
+    idx = np.arange(LAGS - 1, T)
+    vals = np.stack([Sf[idx - l] for l in range(LAGS)], -1)
+    msk = np.stack([M[idx - l] for l in range(LAGS)], -1).astype(np.float32)
+    t = grid.index[idx]
+    mod = (t.hour * 60 + t.minute).values
+    tf = np.stack([np.sin(2 * np.pi * mod / 1440), np.cos(2 * np.pi * mod / 1440),
+                   (prepare.day_type(t) != "weekday").astype(float),
+                   weather.reindex(t, method="nearest", tolerance=pd.Timedelta("30min")).fillna(0).values.clip(0, 5) / 5], 1)
+    tf = np.repeat(tf[:, None, :], N, 1).astype(np.float32)
+    return np.concatenate([vals, msk, tf], -1), t
