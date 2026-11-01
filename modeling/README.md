@@ -30,3 +30,10 @@ Only pairs of slots where both readings exist are scored, and every model is sco
 Order: `evaluate.py --save-rows rows.pkl`, `alerts.py --rows rows.pkl`, `routing.py --save demo.pkl`, `demo_dashboard.py --demo demo.pkl --out dashboard.html`. Python 3.11 with pandas, numpy, scikit-learn and torch.
 - `tune.py`: random hyper-parameter search with 3 seeds per configuration, using only data before the test week; writes `tuning.json` (settings, scores, learning curves). `evaluate.py --hp-json` and `routing.py --hp-json` then use the chosen settings.
 - `results/tuning-2026-11-01.md` and `.json`: the search. `results/phase2-models-tuned-2026-11-01.md` and `results/phase2-alerts-trips-tuned-2026-11-01.md`: the final results with tuned settings.
+
+## Phase 2: well-known models, METR-LA and pretraining
+- `refmodels.py`: our re-implementations of **Graph WaveNet** (gated dilated causal convolutions, diffusion convolution, learned adjacency) and **STID** (node, time-of-day and day-type embeddings with an MLP). Written from the papers, not the authors' code.
+- `refbengaluru.py`, `evaluate_ref.py`: train and score both on the Bengaluru data, on the same rows and 5 seeds as every other model: `python modeling/evaluate_ref.py --data-dir <data> --rows rows.pkl --out result.md`. Result: `results/phase2-reference-models-2026-11-01.md`.
+- `metrla.py`: the standard METR-LA benchmark (12 steps in, 12 out, 70/10/20 split, masked metrics). Download metr-la.h5 and the DCRNN graph files first. STID: `python modeling/metrla.py --data-dir <folder> --model stid --epochs 30`. Graph WaveNet needs a GPU (about 23 min per epoch on CPU): `--model gwn --epochs 100`. Result: `results/metrla-stid-2026-11-01.md`.
+- `pretrain.py`: pretrain STID on METR-LA, then fine-tune on Bengaluru (all weights, or trunk frozen). Result with a from-scratch control and the limits: `results/phase2-pretraining-2026-11-01.md`. Fine-tuning all weights was about 2% better than training from scratch (one pretraining run, one test week).
+- Alternative roads for real route choice: see `collector/ALT_ROADS.md` (first build did not pass verification; not collected).
