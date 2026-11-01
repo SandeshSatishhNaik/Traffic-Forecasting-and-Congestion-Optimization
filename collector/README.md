@@ -88,3 +88,17 @@ TOMTOM_API_KEY=... LOOP_MINUTES=100000 NO_CHAIN=true bash collector/loop.sh
 It keeps collecting on the same schedule until stopped.
 
 Test without a key or network: `python collector/collect.py --dry-run --out /tmp/test`.
+
+## Run it on your own computer (no GitHub, no git)
+
+`run_local.py` is a Python version of the loop with the same schedule. It writes the readings to a folder on your machine, so nothing is ever pushed anywhere and the licence problem of a public data branch disappears. Works on Windows, Mac and Linux (Python 3.8 or newer, no other packages).
+
+```
+# Windows PowerShell:  $env:TOMTOM_API_KEY="your_key"
+# Mac / Linux:         export TOMTOM_API_KEY=your_key
+python collector/run_local.py --out local-data
+```
+
+- Keep the computer awake and online (turn off sleep); readings missed while it is off are lost. Test first with `--dry-run --once`.
+- Do not run it together with the GitHub collector: both use the same TomTom free limit (20,000 requests a month). To switch: set the Actions variable `COLLECT_ENABLED` to `false`, cancel the running collection, copy the old data (`git worktree add ../data-snapshot origin/bengaluru-data`, files are in `../data-snapshot/data/`) into your `local-data` folder, then start the local collector.
+- `modeling/` reads this folder directly: `python modeling/evaluate.py --data-dir local-data`.
