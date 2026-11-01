@@ -56,6 +56,21 @@ ROUTES = [
     dict(name="varthur", tier="context", seed=(12.9561094, 77.7295768),
          fwd=None, back=None, fwd_steps=0, back_steps=0),
 ]
+# Alternative roads (tier "alt") that run beside the Outer Ring Road, so the planner has a real choice
+# between roads for the same trip. Built only with --alt, written to *_alt.csv files, and NOT collected
+# until their rows are added to segments.csv (see collector/ALT_ROADS.md). The seeds are approximate
+# positions from memory of the map; `expect` is what the OpenStreetMap name of the matched stretch must
+# contain. The build prints a VERIFY line per stretch (OK / CHECK) so a wrong seed is caught here.
+ROUTES_ALT = [
+    dict(name="sarjapur_w", tier="alt", seed=(12.9098, 77.6712), expect=("Sarjapur",),
+         fwd=None, back=None, fwd_steps=2, back_steps=2),
+    dict(name="sarjapur_e", tier="alt", seed=(12.9115, 77.6975), expect=("Sarjapur",),
+         fwd=None, back=None, fwd_steps=2, back_steps=1),
+    dict(name="whitefield", tier="alt", seed=(12.9921, 77.7156), expect=("Whitefield", "ITPL", "Hoodi"),
+         fwd=None, back=None, fwd_steps=2, back_steps=2),
+    dict(name="old_madras", tier="alt", seed=(13.0000, 77.6760), expect=("Madras", "Hosur", "Tin Factory"),
+         fwd=None, back=None, fwd_steps=2, back_steps=2),
+]
 # The request points of the first ten segments, so their ids and history carry over.
 LEGACY = {
     "orr_hsr": (12.9164439, 77.6399669), "orr_iblur": (12.9231101, 77.6702694),
@@ -641,11 +656,29 @@ def report(stretches, links, feats):
         emit("features.csv", to_csv(feats, fields))
 
 
+def verify_alt(stretches, feats, routes, log):
+    """One line per new stretch: does the OpenStreetMap road under it have the name we expected?"""
+    expect = {r["name"]: r.get("expect", ()) for r in routes}
+    ok = 0
+    for s in stretches:
+        f = next((x for x in feats if x["segment_id"] == s["id"]), {})
+        name = f.get("osm_name", "") or "(no OSM name)"
+        good = any(e.lower() in name.lower() for e in expect.get(s["route"], ()))
+        ok += good
+        note = " LONG: too coarse for route choice" if s["len_m"] > 5000 else ""
+        log(f"VERIFY {'OK   ' if good else 'CHECK'} {s['id']}: OSM '{name}' ({f.get('osm_road', '?')}), TomTom "
+            f"{s['frc']}, {s['len_m'] / 1000:.2f} km, expected {'/'.join(expect.get(s['route'], ()))}{note}")
+    log(f"VERIFY summary: {ok} of {len(stretches)} stretches match the expected road name")
+
+
+STRETCH_PATH = "network/stretches.json"
+
+
 def store_geometry(stretches, log):
     doc = [{"segment_id": s["id"], "route": s["route"], "seq": s["seq"], "frc": s["frc"], "openlr": s["openlr"],
             "tier": s["tier"], "legacy_id": s["legacy"], "length_m": round(s["len_m"]), "polyline": [[round(a, 6), round(b, 6)] for a, b in s["pts"]]}
            for s in stretches]
-    store_private("network/stretches.json", json.dumps(doc, separators=(",", ":")), log)
+    store_private(STRETCH_PATH, json.dumps(doc, separators=(",", ":")), log)
 
 
 # ---------------------------------------------------------------- self-test
@@ -700,6 +733,8 @@ def main():
     ap.add_argument("--no-osm", action="store_true", help="skip the OpenStreetMap features")
     ap.add_argument("--verbose", action="store_true", help="print every probe of the walk")
     ap.add_argument("--zoom", type=int, default=10)
+    ap.add_argument("--alt", action="store_true",
+                    help="build only the alternative roads (ROUTES_ALT); output goes to *_alt files")
     args = ap.parse_args()
     if args.selftest:
         return _selftest()
@@ -709,7 +744,15 @@ def main():
     log = (lambda m: print(m, flush=True)) if args.verbose else (
         lambda m: print(m, flush=True) if not m.startswith("    probe") else None)
     flow = Flow(key, zoom=args.zoom)
-    stretches, links, feats = run(flow, ROUTES, not args.no_osm, log)
+    routes = ROUTES_ALT if args.alt else ROUTES
+    if args.alt:
+        global emit, STRETCH_PATH
+        _emit = emit
+        emit = lambda name, text: _emit(name.replace(".csv", "_alt.csv"), text)
+        STRETCH_PATH = "network/stretches_alt.json"
+    stretches, links, feats = run(flow, routes, not args.no_osm, log, legacy={} if args.alt else None)
+    if args.alt and feats:
+        verify_alt(stretches, feats, routes, print)
     report(stretches, links, feats)
     store_geometry(stretches, log)
     print(f"Done. {flow.calls} TomTom requests.")
