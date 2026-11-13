@@ -87,17 +87,21 @@ python collector/run_local.py --out local-data                     # run for rea
 
 ## 5. Check the data before you train
 
-Models read `local-data` directly, so a quick health check is worth it:
+Models read `local-data` directly, so run this health check from the repository folder:
 ```
 python - <<'PY'
 import sys; sys.path.insert(0, "modeling")
 import prepare
-df = prepare.load_flow("local-data")
-print(df.shape); print(df.index.min() if hasattr(df.index, "min") else df.head())
+df, ids = prepare.load_flow("local-data")
+print(len(df), "valid readings,", df["segment_id"].nunique(), "of", len(ids), "stretches")
+print("first reading:", df["t"].min(), "  last reading:", df["t"].max())
+print(df.groupby(df["t"].dt.date).size().tail(7))
 PY
 ```
-(If that prints a table with your segment ids and times, the data loads.) Then count days:
-`ls local-data/tomtom_flow` and open the newest file: it should end with today's date.
+(Windows PowerShell has no `<<` heredoc: save the lines between `PY` and `PY` as `health.py` and run `python health.py`.)
+What good looks like: `21 of 21 stretches`, the last reading is today, and each full day shows **596** readings
+(on the snapshot up to 1 Nov the check printed 19,093 readings and 596 per full day). A day with far fewer means
+the collector was off or a slot failed.
 
 ## 6. Run the models on your data
 
