@@ -1,1 +1,8 @@
 __pycache__/
+local-data/
+*.pkl
+*.pt
+dashboard*.html
+Traffic_Forecast_Replay*.html
+metrla/
+.venv/
