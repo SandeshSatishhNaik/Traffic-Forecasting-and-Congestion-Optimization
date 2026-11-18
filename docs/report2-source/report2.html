@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PBL Report 2: Contents, Context and Artifacts</title>
+<style>
+  @page { size: A4; }
+  * { box-sizing: border-box; }
+  body { font-family: "Times New Roman", "Liberation Serif", Times, serif; font-size: 12pt; line-height: 1.42; color: #000; margin: 0; }
+  h1 { font-size: 13pt; text-align: center; font-weight: bold; margin: 0 0 12pt 0; letter-spacing: 0.2pt; }
+  h2 { font-size: 12pt; font-weight: bold; margin: 14pt 0 5pt 0; }
+  p { margin: 0 0 7pt 0; text-align: justify; }
+  ul { margin: 0 0 8pt 0; padding-left: 19pt; }
+  li { margin: 0 0 3.5pt 0; text-align: justify; page-break-inside: avoid; }
+  .pb { page-break-before: always; }
+  .contents { margin-left: 8mm; }
+  .contents div { margin: 0 0 7pt 0; }
+  .contents div:not(.sub) { margin-top: 6pt; }
+  .contents .sub { margin-left: 9mm; margin-bottom: 2.5pt; font-size: 11.5pt; }
+  table { border-collapse: collapse; width: calc(100% - 1.5pt); margin: 4pt 0 10pt 0; font-size: 9.6pt; line-height: 1.28; }
+  th, td { border: 0.8pt solid #444; padding: 3.2pt 4.5pt; vertical-align: top; text-align: left; }
+  th { background: #e9e4e2; font-weight: bold; }
+  tr { page-break-inside: avoid; }
+  td.id { width: 9mm; white-space: nowrap; }
+  td.loc { font-family: "Courier New", "Liberation Mono", monospace; font-size: 8.4pt; overflow-wrap: break-word; word-break: normal; }
+  .note { width: calc(100% - 1.5pt); border: 0.8pt solid #632523; padding: 6pt 9pt; font-size: 10.5pt; margin-top: 16pt; background: #faf6f5; }
+  .small { font-size: 10.5pt; }
+  .tag { font-weight: bold; }
+</style>
+</head>
+<body>
+
+<!-- ============================== CONTENTS ============================== -->
+<h1>CONTENTS</h1>
+<div class="contents">
+  <div>1. PROJECT CONTEXT</div>
+  <div class="sub">1.1 Background</div>
+  <div class="sub">1.2 Recap of Phase 1</div>
+  <div class="sub">1.3 What Phase 2 adds</div>
+  <div class="sub">1.4 Scope and constraints</div>
+  <div class="sub">1.5 Changes from the Phase 1 plan</div>
+  <div class="sub">1.6 Key terms</div>
+  <div>2. PROBLEM STATEMENT</div>
+  <div>3. DATASET DETAILS</div>
+  <div>4. SYSTEM ARCHITECTURE</div>
+  <div>5. DATA PRE-PROCESSING STEPS</div>
+  <div>6. EXPLORATORY DATA ANALYSIS</div>
+  <div>7. MODELS IMPLEMENTED</div>
+  <div>8. IMPLEMENTATION STATUS</div>
+  <div>9. PERFORMANCE METRICS AND RESULTS</div>
+  <div>10. ARTIFACTS</div>
+  <div class="sub">10.1 The project repository</div>
+  <div class="sub">10.2 Data collection</div>
+  <div class="sub">10.3 Road network</div>
+  <div class="sub">10.4 Models and evaluation code</div>
+  <div class="sub">10.5 Result files</div>
+  <div class="sub">10.6 Presentations, reports and dashboard</div>
+  <div class="sub">10.7 Documentation</div>
+  <div class="sub">10.8 Items kept outside the repository</div>
+  <div>11. CONCLUSION</div>
+</div>
+<div class="note"><b>Note for the team (remove before submission).</b> This document contains sections 1 and 10 in full. Sections 2 to 9 and 11 follow the Phase 2 presentation; the last page lists the slide and result file to take each from.</div>
+
+<!-- ============================== 1. CONTEXT ============================== -->
+<div class="pb"></div>
+<h1>1. PROJECT CONTEXT</h1>
+
+<h2>1.1 Background</h2>
+<p>Bengaluru's Outer Ring Road (ORR) carries a large share of the city's commuter and technology-park traffic. Speeds on it change within minutes. In our readings, weekday speed falls to about 60% of normal speed around 18:00 and to about 70% around 09:00 to 10:00, while on weekends and holidays it stays above 85% of normal all day. Navigation applications show the speed at this moment. They do not tell a commuter or a traffic manager what the speed will be in 15, 30 or 60 minutes, which is when a decision can still change the outcome. Roads also affect each other: a queue on one stretch spreads to the stretches that feed it. This is why the project treats the corridor as a connected road graph and not as separate roads.</p>
+
+<h2>1.2 Recap of Phase 1</h2>
+<p>Phase 1 scoped the problem as forecasting speed on connected road stretches 15, 30 and 60 minutes ahead, and turning the forecasts into congestion alerts and route recommendations. The literature on traffic forecasting was surveyed (statistical, recurrent, graph-convolutional and attention-based models), and an automatic collector for the ORR corridor was started on 27 September 2026.</p>
+
+<h2>1.3 What Phase 2 adds</h2>
+<ul>
+  <li><b>Data.</b> 19,093 valid speed readings on 21 connected road stretches, from 30 September to 1 November 2026 (33 days), with weather. Collection is still running; the models in this report use these first 33 days.</li>
+  <li><b>Road graph.</b> The 21 stretches are linked by flow links and junction crossings, with OpenStreetMap features (lanes, speed limit, signals, intersections, schools, hospitals, offices, bus stops, metro) attached to each stretch.</li>
+  <li><b>Models.</b> Eleven model versions compared on identical rows: four baselines (Persistence, Historical Average, Gradient Boosting on its own history, Gradient Boosting on all roads), three versions of a two-layer Graph Convolutional Network (GCN: no graph, road graph, road graph plus learned graph), Graph WaveNet, STID, and two versions of STID pretrained on the METR-LA benchmark.</li>
+  <li><b>Decisions.</b> Congestion alerts, trip-time estimates and a time-dependent route planner built on the forecasts of the GCN with the road graph.</li>
+  <li><b>Visualisation.</b> An offline replay dashboard that shows the forecast next to what actually happened.</li>
+</ul>
+
+<h2>1.4 Scope and constraints</h2>
+<ul>
+  <li><b>Study area.</b> The Outer Ring Road from Silk Board towards KR Puram in both directions (17 stretches) plus four feeder-road stretches (Hosur Road, Old Airport Road, Varthur Road).</li>
+  <li><b>Free data tiers.</b> The TomTom free tier allows 20,000 flow requests a month. The collection schedule uses 596 a day, which is 18,476 in a 31-day month.</li>
+  <li><b>Data licence.</b> The data provider's terms do not allow publishing or storing the readings publicly. Raw readings are therefore kept out of the shared results; only code and aggregate results are shared. A permission request to the provider is drafted.</li>
+  <li><b>Compute.</b> Models were trained on a four-core CPU without a GPU. The full Graph WaveNet check on METR-LA needs a GPU and is pending.</li>
+  <li><b>Evaluation.</b> Chronological split by day: training before 18 October, validation 18 to 24 October, test 25 to 31 October 2026. One test week and one corridor, so the results are indicative and not general.</li>
+</ul>
+
+<h2>1.5 Changes from the Phase 1 plan</h2>
+<p>The Phase 1 report set out a plan. The table states plainly what was done, what was changed and what is not yet done.</p>
+<table>
+  <tr><th style="width:27%">Phase 1 plan</th><th>What was done in Phase 2</th><th style="width:15%">Status</th></tr>
+  <tr><td>Datasets: METR-LA, PEMS-BAY and our own Bengaluru data</td><td>METR-LA (benchmark check and pretraining) and Bengaluru data. PEMS-BAY was not used.</td><td>Partly done</td></tr>
+  <tr><td>Compare Historical Average, XGBoost, LSTM, Graph WaveNet and STID</td><td>Persistence, Historical Average, Gradient Boosting (scikit-learn HistGradientBoostingRegressor in place of XGBoost), GCN, Graph WaveNet and STID. LSTM was not implemented.</td><td>Partly done</td></tr>
+  <tr><td>Directed road graph with OpenStreetMap features</td><td>Done for 21 stretches (links file and features file). The models use the graph; the OpenStreetMap features are not yet fed into them.</td><td>Done; features not yet used</td></tr>
+  <tr><td>Chronological split; masked MAE, RMSE, MAPE at 15, 30 and 60 minutes</td><td>Done, with 5 training runs (seeds) per neural model and identical scored rows for every model.</td><td>Done</td></tr>
+  <tr><td>Early congestion warnings</td><td>Done. Forecast-based alerts scored against an alert from the current speed.</td><td>Done</td></tr>
+  <tr><td>Routes by Dijkstra on predicted travel time, through an API and a map dashboard</td><td>Time-dependent Dijkstra written in our own code (not NetworkX) and an offline HTML replay dashboard. No API (FastAPI) and no live map yet. The graph has one real detour and one assumed link.</td><td>Partly done</td></tr>
+  <tr><td>Show that the recommended route has a lower predicted travel time than the route from current speeds</td><td>Not shown. The planner chose the ORR in all 70 weekday departures tested, because the only alternative in the graph is about twice as long. Forecast-based trip times are closer to the real ones than a live-map style estimate (mean error 1.5 vs 1.9 minutes eastbound, 2.1 vs 2.4 westbound).</td><td>Not yet met</td></tr>
+  <tr><td>Collect four to six weeks of continuous data</td><td>Collection running since 27 September 2026; 33 days used for the models in this report.</td><td>Met</td></tr>
+  <tr><td>PyTorch with BasicTS or LibCity, NetworkX, FastAPI, Leaflet</td><td>Our own PyTorch code, our own Dijkstra, a self-contained HTML dashboard.</td><td>Changed</td></tr>
+</table>
+
+<h2>1.6 Key terms</h2>
+<table>
+  <tr><th style="width:26%">Term</th><th>Meaning</th></tr>
+  <tr><td>Road stretch</td><td>One TomTom road segment, the unit that is measured and forecast (21 in this project).</td></tr>
+  <tr><td>Reference speed</td><td>A fixed normal speed for each road: the 95th percentile of its night-time speeds in the training period. Speeds are divided by it so slow and fast roads can be compared.</td></tr>
+  <tr><td>Horizon</td><td>How far ahead the forecast looks: 15, 30 or 60 minutes.</td></tr>
+  <tr><td>Road graph</td><td>The stretches as nodes and the links between them (flow links and junction crossings) as edges.</td></tr>
+  <tr><td>GCN</td><td>Graph Convolutional Network: a neural network layer that mixes each road with its neighbours in the road graph.</td></tr>
+  <tr><td>Ablation</td><td>Removing one part (here, the graph) from an otherwise identical model to measure what that part is worth.</td></tr>
+  <tr><td>MAE, RMSE, MAPE</td><td>Average absolute error in km/h; the same with large errors weighted more; error as a percentage of the real speed. Lower is better.</td></tr>
+  <tr><td>Seed</td><td>One training run with a particular random start. Results are reported as the mean of 5 seeds and their spread.</td></tr>
+</table>
+
+<!-- ============================== 10. ARTIFACTS ============================== -->
+<div class="pb"></div>
+<h1>10. ARTIFACTS</h1>
+<p>This section lists everything the project produced, where each item is, and the evidence that it works. Artifact numbers are used in the other sections of the report.</p>
+
+<h2>10.1 The project repository</h2>
+<table>
+  <tr><td style="width:24%"><b>Location</b></td><td>github.com/SandeshSatishhNaik/Traffic-Forecasting-and-Congestion-Optimization (default branch)</td></tr>
+  <tr><td><b>Contents</b></td><td>About 3,500 lines of Python and shell, four GitHub Actions workflows, documentation, research notes and result tables. It holds code and aggregate results only, with no raw readings.</td></tr>
+  <tr><td><b>Latest code commit</b></td><td>77de408 (13 November 2026)</td></tr>
+  <tr><td><b>How to reproduce</b></td><td>docs/LOCAL_SETUP.md: step-by-step setup of the collector, the models, the METR-LA check and the dashboard on a personal computer.</td></tr>
+</table>
+
+<h2>10.2 Data collection</h2>
+<table>
+  <tr><th class="id">ID</th><th style="width:22%">Artifact</th><th style="width:29%">Location</th><th>What it is and the evidence</th></tr>
+  <tr><td class="id">A1</td><td>Collector</td><td class="loc">collector/collect.py</td><td>Calls the TomTom Flow Segment service for every stretch and Open-Meteo for weather, logs TomTom incidents, and appends rows to monthly CSV files. Checks the request budget against the free tier.</td></tr>
+  <tr><td class="id">A2</td><td>Schedule loop</td><td class="loc">collector/loop.sh</td><td>Runs on a 15-minute slot grid (IST): the ORR every 15 minutes in the two rush-hour windows, every 30 minutes around them, every 2 hours at night; feeder roads less often. 596 requests a day, 18,476 a month, inside the 20,000 free limit.</td></tr>
+  <tr><td class="id">A3</td><td>Automatic collection workflow</td><td class="loc">.github/workflows/collect-bengaluru.yml</td><td>A self-restarting chain of runs of about 5.5 hours, with a backup trigger every 3 hours. More than 360 runs recorded.</td></tr>
+  <tr><td class="id">A4</td><td>Local collector</td><td class="loc">collector/run_local.py</td><td>Same schedule on a personal computer, standard library only, writing to a local folder with no git. Tested with a dry run.</td></tr>
+  <tr><td class="id">A5</td><td>Stretch list</td><td class="loc">collector/segments.csv</td><td>The 21 stretches: 17 core (Outer Ring Road, both directions) and 4 context (feeder roads), with route, length and road class.</td></tr>
+  <tr><td class="id">A6</td><td>Request-budget check</td><td class="loc">collector/quota_plan.py</td><td>Computes requests per day and per month for a schedule. Shows that at most 12 extra stretches fit in the free tier, and only with a trimmed schedule.</td></tr>
+  <tr><td class="id">A7</td><td>Data-repository tools</td><td class="loc">collector/migrate_to_private.sh, collector/diagnose.py, .github/workflows/migrate-data.yml, .github/workflows/diagnose-network.yml</td><td>Copies collected data to a private repository and checks row counts; one-off diagnostics of the road network (segment length, signals, tile content).</td></tr>
+</table>
+
+<h2>10.3 Road network</h2>
+<table>
+  <tr><th class="id">ID</th><th style="width:22%">Artifact</th><th style="width:29%">Location</th><th>What it is and the evidence</th></tr>
+  <tr><td class="id">B1</td><td>Network builder</td><td class="loc">collector/build_network.py, .github/workflows/build-network.yml</td><td>Walks the road with TomTom requests, links the stretches, adds OpenStreetMap features. Has a self-test and an --alt mode for extra roads.</td></tr>
+  <tr><td class="id">B2</td><td>Links and features</td><td class="loc">collector/network/links.csv, features.csv, legacy_ids.csv, README.md</td><td>Flow links and junction crossings between stretches; 21 rows of road features (lanes, speed limit, signals, intersections, schools, hospitals, offices, bus stops, metro); old-to-new stretch ids.</td></tr>
+  <tr><td class="id">B3</td><td>Alternative roads plan</td><td class="loc">collector/ALT_ROADS.md</td><td>Plan and result of the first build for extra parallel roads (Sarjapur Road, Whitefield Road, Old Madras Road). 5 of 13 stretches matched the expected road name and the matched ones were 14 to 23 km long, too coarse for route choice. <b>Not collected yet.</b></td></tr>
+</table>
+
+<h2>10.4 Models and evaluation code</h2>
+<table>
+  <tr><th class="id">ID</th><th style="width:22%">Artifact</th><th style="width:29%">Location</th><th>What it is and the evidence</th></tr>
+  <tr><td class="id">C1</td><td>Data preparation</td><td class="loc">modeling/prepare.py</td><td>Loads readings, builds the 15-minute grid, the fixed reference speed, calendar flags and the road adjacency matrix.</td></tr>
+  <tr><td class="id">C2</td><td>Baselines</td><td class="loc">modeling/baselines.py</td><td>Persistence (last value), Historical Average and Gradient Boosting (scikit-learn HistGradientBoostingRegressor).</td></tr>
+  <tr><td class="id">C3</td><td>Graph Convolutional Network</td><td class="loc">modeling/stgnn.py</td><td>Two-layer GCN predicting all 21 stretches together, in three variants that differ only in the graph: none, road graph, road graph plus learned graph.</td></tr>
+  <tr><td class="id">C4</td><td>Evaluation</td><td class="loc">modeling/evaluate.py</td><td>Trains and scores all of the above on identical rows, 5 seeds each, at 15, 30 and 60 minutes.</td></tr>
+  <tr><td class="id">C5</td><td>Hyper-parameter search</td><td class="loc">modeling/tune.py</td><td>Random search over 30 settings with 3 seeds each, using only data before the test week. Chosen: hidden size 64, embedding 4, dropout 0.2, learning rate 0.003, weight decay 0, batch 32, 3 lags.</td></tr>
+  <tr><td class="id">C6</td><td>Congestion alerts</td><td class="loc">modeling/alerts.py</td><td>Raises an alert when the forecast speed is below 0.6 or 0.75 of the reference speed, and scores it against an alert from the current speed.</td></tr>
+  <tr><td class="id">C7</td><td>Trip time and routing</td><td class="loc">modeling/routing.py</td><td>Time-dependent Dijkstra over the stretch graph (cost of a stretch = length divided by speed when the vehicle enters it) and trip-time estimates scored against the real trip.</td></tr>
+  <tr><td class="id">C8</td><td>Dashboard generator</td><td class="loc">modeling/demo_dashboard.py</td><td>Builds one offline HTML page that replays 160 moments of the test week. The page embeds readings, so it is not stored in the repository.</td></tr>
+  <tr><td class="id">C9</td><td>Graph WaveNet and STID</td><td class="loc">modeling/refmodels.py, refbengaluru.py, evaluate_ref.py</td><td>Our re-implementations of the two published models, trained and scored exactly like the GCN (same rows, 5 seeds).</td></tr>
+  <tr><td class="id">C10</td><td>METR-LA benchmark</td><td class="loc">modeling/metrla.py</td><td>Standard protocol (12 steps in, 12 out, 70/10/20 split, masked metrics) for STID and Graph WaveNet.</td></tr>
+  <tr><td class="id">C11</td><td>Pretraining</td><td class="loc">modeling/pretrain.py</td><td>Pretrains STID on METR-LA, then fine-tunes on Bengaluru (all weights, or main layers frozen).</td></tr>
+</table>
+
+<h2>10.5 Result files</h2>
+<p class="small">All are in <span style="font-family:'Courier New','Liberation Mono',monospace;font-size:9pt">modeling/results/</span> and hold aggregate numbers only. MAE is in km/h on the test week 25 to 31 October 2026.</p>
+<table>
+  <tr><th class="id">ID</th><th style="width:34%">File</th><th>Headline</th></tr>
+  <tr><td class="id">R1</td><td class="loc">baselines-2026-10-12.md</td><td>Earlier baseline run on the first weeks of data (walk-forward split).</td></tr>
+  <tr><td class="id">R2</td><td class="loc">phase2-models-2026-11-01.md</td><td>All models at default settings; the road graph lowers the net's error at every horizon.</td></tr>
+  <tr><td class="id">R3</td><td class="loc">tuning-2026-11-01.md, tuning-2026-11-01.json</td><td>The search: best validation error 8.63% against 8.78% for the defaults, so the settings matter little.</td></tr>
+  <tr><td class="id">R4</td><td class="loc">phase2-models-tuned-2026-11-01.md</td><td>GCN with road graph: 2.99 / 3.33 / 3.46 at 15 / 30 / 60 min. Persistence: 3.16 / 3.91 / 4.42. Without the graph: 3.29 / 3.63 / 3.75. Gradient Boosting (all roads): 3.19 / 3.58 / 3.77.</td></tr>
+  <tr><td class="id">R5</td><td class="loc">phase2-alerts-trips-2026-11-01.md, phase2-alerts-trips-tuned-2026-11-01.md</td><td>Alerts at 60 minutes (threshold 0.6): F1 0.77 from the forecast against 0.69 from the current speed. Trip-time error on the 7.9 km eastbound trip: 1.5 minutes against 1.9.</td></tr>
+  <tr><td class="id">R6</td><td class="loc">phase2-reference-models-2026-11-01.md</td><td>Graph WaveNet 2.99 / 3.49 / 3.85 (worse than the GCN at 30 and 60 min); STID 2.99 / 3.33 / 3.41 (ties the GCN).</td></tr>
+  <tr><td class="id">R7</td><td class="loc">metrla-stid-2026-11-01.md</td><td>STID on METR-LA after 30 epochs on a CPU: 2.81 / 3.18 / 3.55. Graph WaveNet not run (needs a GPU); the command is in the file.</td></tr>
+  <tr><td class="id">R8</td><td class="loc">phase2-pretraining-2026-11-01.md</td><td>STID pretrained on METR-LA and fine-tuned: 2.92 / 3.27 / 3.33, against 2.98 / 3.34 / 3.41 from scratch and 3.01 / 3.37 / 3.43 for a control with the same settings. One pretraining run, one test week.</td></tr>
+</table>
+
+<h2>10.6 Presentations, reports and dashboard</h2>
+<table>
+  <tr><th class="id">ID</th><th style="width:30%">Artifact</th><th style="width:26%">Location</th><th>Description</th></tr>
+  <tr><td class="id">P1</td><td>Phase 2 presentation</td><td>Delivered as a file (not in the repository)</td><td>12 slides on the college template, with speaker notes: problem, dataset, architecture, pre-processing, exploratory analysis, models, status, results, conclusion.</td></tr>
+  <tr><td class="id">P2</td><td>Replay dashboard</td><td>Generated by C8; kept private</td><td>One offline HTML file with a Replay tab (forecast next to what happened, at 160 moments of the test week) and a Model training tab (learning curves, tuning, model comparison).</td></tr>
+  <tr><td class="id">P3</td><td>Phase 1 presentation</td><td class="loc">docs/phase1-presentation.pptx</td><td>Abstract, introduction, existing system, problem statement, objectives, literature survey.</td></tr>
+  <tr><td class="id">P4</td><td>Phase 1 report</td><td class="loc">docs/PBL_Report_Phase_1.docx</td><td>Report in the college format, including the literature survey.</td></tr>
+</table>
+
+<h2>10.7 Documentation</h2>
+<table>
+  <tr><th class="id">ID</th><th style="width:30%">Artifact</th><th>Description</th></tr>
+  <tr><td class="id">D1</td><td class="loc">collector/README.md</td><td>Setup of the collector, the free-tier schedule table, keeping data private, running locally.</td></tr>
+  <tr><td class="id">D2</td><td class="loc">modeling/README.md</td><td>What each modelling script does and the order to run them.</td></tr>
+  <tr><td class="id">D3</td><td class="loc">docs/LOCAL_SETUP.md</td><td>Full guide to run everything on a personal computer, with a ready-to-use checklist.</td></tr>
+  <tr><td class="id">D4</td><td class="loc">docs/problem-statement.md</td><td>The problem statement as given and as clarified by the team.</td></tr>
+  <tr><td class="id">D5</td><td class="loc">research/00 to 05 (six notes)</td><td>Learning roadmap, Bengaluru data sources, replay versus simulation, vehicle counts, road network and the factors that affect speed, and the draft permission request to the data provider.</td></tr>
+</table>
+
+<h2>10.8 Items kept outside the repository</h2>
+<table>
+  <tr><th style="width:30%">Item</th><th>Why</th></tr>
+  <tr><td>Raw speed readings (TomTom) and weather files</td><td>The provider's terms do not allow publishing them. Stored separately from the code; to be held in a private repository or on the team's computer.</td></tr>
+  <tr><td>Per-row prediction files and trained weights</td><td>They contain readings or are derived from them. They can be regenerated with the scripts in 10.4.</td></tr>
+  <tr><td>Replay dashboard (P2)</td><td>It embeds readings, so it is shared only inside the team and the college.</td></tr>
+</table>
+
+<!-- ============================== ANNEX ============================== -->
+<div class="pb"></div>
+<h1>ANNEX FOR THE TEAM (remove before submission)</h1>
+<p>Where to take the content of the remaining sections from:</p>
+<table>
+  <tr><th style="width:8%">No.</th><th style="width:30%">Section</th><th>Take the content from</th></tr>
+  <tr><td>2</td><td>Problem statement</td><td>Presentation slide 3; docs/problem-statement.md</td></tr>
+  <tr><td>3</td><td>Dataset details</td><td>Slide 4; collector/README.md; A5 and B2 above</td></tr>
+  <tr><td>4</td><td>System architecture</td><td>Slide 5 (six-step flow); the flow in docs/LOCAL_SETUP.md</td></tr>
+  <tr><td>5</td><td>Data pre-processing steps</td><td>Slide 6; modeling/prepare.py (C1)</td></tr>
+  <tr><td>6</td><td>Exploratory data analysis</td><td>Slide 7 (speed by hour, weekday against weekend)</td></tr>
+  <tr><td>7</td><td>Models implemented</td><td>Slide 8; section 10.4 above; modeling/README.md</td></tr>
+  <tr><td>8</td><td>Implementation status</td><td>Slide 9; the table in section 1.5</td></tr>
+  <tr><td>9</td><td>Performance metrics and results</td><td>Slides 10 and 11; result files R2 to R8</td></tr>
+  <tr><td>11</td><td>Conclusion</td><td>Slide 12</td></tr>
+</table>
+<p class="small"><b>Before you submit, check:</b> the team names, USNs, guide and coordinator on the cover page; that the date range and counts (33 days, 19,093 readings, 21 stretches) match the version of the data you report; and that section 1.5 matches what your guide expects from the Phase 1 plan.</p>
+
+<script>document.querySelectorAll('td.loc').forEach(function(td){td.innerHTML=td.innerHTML.replace(/\//g,'/<wbr>').replace(/,\s/g,',<wbr> ').replace(/_/g,'_<wbr>').replace(/-/g,'-<wbr>');});</script>
+</body>
+</html>
