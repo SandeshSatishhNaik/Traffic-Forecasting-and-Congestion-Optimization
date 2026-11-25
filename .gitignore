@@ -7,3 +7,5 @@ Traffic_Forecast_Replay*.html
 metrla/
 .venv/
 app/data/
+liveapp/data/
+liveapp/models/

@@ -95,7 +95,9 @@ def masked_l1(p, y, m):
     return ((p - y).abs() * m).sum() / m.sum().clamp(min=1)
 
 
-def train_predict(tr, va, te, A, variant, seed, epochs=200, patience=25, hp=None, history=None):
+def train_predict(tr, va, te, A, variant, seed, epochs=200, patience=25, hp=None, history=None, return_net=False):
+    """Train one network (early stopping on va) and predict te. return_net=True also returns the trained network
+    (te may then be None), so it can be saved and reused, e.g. by the live app."""
     hp = {**DEFAULT_HP, **(hp or {})}
     torch.manual_seed(seed)
     np.random.seed(seed)
@@ -132,7 +134,8 @@ def train_predict(tr, va, te, A, variant, seed, epochs=200, patience=25, hp=None
     net.load_state_dict(best_state)
     net.eval()
     with torch.no_grad():
-        return net(f(te[0])).numpy(), best, ep
+        pred = net(f(te[0])).numpy() if te is not None else None
+    return (pred, best, ep, net) if return_net else (pred, best, ep)
 
 
 def make_inputs(grid, ref, weather):
