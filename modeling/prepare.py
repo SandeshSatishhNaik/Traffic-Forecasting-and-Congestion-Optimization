@@ -19,7 +19,12 @@ LEGACY_IDS = {"sarjapur_agara": "orr_ccw_03"}   # see collector/network/legacy_i
 FIRST_READING = "2026-09-30 10:40"              # first reading of the 21-stretch network
 # Gandhi Jayanti (2 Oct) and the Dasara days 19-21 Oct. The Dasara days are weekdays on which the Outer Ring Road
 # ran at weekend speeds (rush-hour speed ratio 0.88-0.95 against 0.63-0.72 on ordinary weekdays), which confirms them.
-HOLIDAYS = {"2026-10-02", "2026-10-19", "2026-10-20", "2026-10-21"}
+HOLIDAYS = {"2026-10-02", "2026-10-19", "2026-10-20", "2026-10-21",
+            # Karnataka public holidays, November 2026 (india.gov.in holiday calendar, KSAT calendar 2026):
+            # Kannada Rajyotsava, Naraka Chaturdashi, Balipadyami/Deepavali, Kanakadasa Jayanti.
+            # 9 Nov is not a public holiday but the Deepavali bridge day: the ORR ran at weekend speed
+            # (rush-hour ratio 0.98 on 9 Nov and 0.96 on 10 Nov, against 0.66-0.73 on ordinary weekdays).
+            "2026-11-01", "2026-11-08", "2026-11-09", "2026-11-10", "2026-11-27"}
 SLOT_MIN = 15
 SLOT_OFFSET_MIN = 7                             # the collector wakes at :07, :22, :37, :52 (IST)
 

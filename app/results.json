@@ -1,0 +1,35 @@
+{
+  "source": "modeling/results/ (phase2-models-tuned, phase2-reference-models, phase2-pretraining, phase2-alerts-trips-tuned, metrla-stid; all 2026-11-01). Test week 25 to 31 October 2026; neural models: mean of 5 training runs.",
+  "horizons": ["15", "30", "60"],
+  "models": [
+    {"name": "Persistence (last value)", "group": "Baseline", "mae": [3.16, 3.91, 4.42]},
+    {"name": "Historical Average", "group": "Baseline", "mae": [4.14, 4.11, 3.90]},
+    {"name": "Gradient Boosting (own history)", "group": "Machine learning", "mae": [3.32, 3.71, 3.82]},
+    {"name": "Gradient Boosting (all roads)", "group": "Machine learning", "mae": [3.19, 3.58, 3.77]},
+    {"name": "GCN, no graph", "group": "Our GCN", "mae": [3.29, 3.63, 3.75]},
+    {"name": "GCN + road graph", "group": "Our GCN", "mae": [2.99, 3.33, 3.46], "used": true},
+    {"name": "GCN + road graph + learned graph", "group": "Our GCN", "mae": [2.99, 3.35, 3.49]},
+    {"name": "Graph WaveNet (re-implemented)", "group": "Well-known", "mae": [2.99, 3.49, 3.85]},
+    {"name": "STID (re-implemented)", "group": "Well-known", "mae": [2.99, 3.33, 3.41]},
+    {"name": "STID pretrained on METR-LA, fine-tuned", "group": "Transfer learning", "mae": [2.92, 3.27, 3.33]},
+    {"name": "STID pretrained on METR-LA, trunk frozen", "group": "Transfer learning", "mae": [2.96, 3.35, 3.41]}
+  ],
+  "alerts": [
+    {"threshold": 0.60, "h": 15, "current": 0.81, "forecast": 0.83},
+    {"threshold": 0.60, "h": 30, "current": 0.76, "forecast": 0.80},
+    {"threshold": 0.60, "h": 60, "current": 0.69, "forecast": 0.77},
+    {"threshold": 0.75, "h": 15, "current": 0.84, "forecast": 0.86},
+    {"threshold": 0.75, "h": 30, "current": 0.80, "forecast": 0.83},
+    {"threshold": 0.75, "h": 60, "current": 0.75, "forecast": 0.81}
+  ],
+  "trips": [
+    {"trip": "ORR eastbound, Silk Board to Doddanekundi (7.9 km)", "departures": 70, "actual_mean": 25.3, "current": 1.9, "historical": 6.4, "forecast": 1.5},
+    {"trip": "ORR westbound, Marathahalli to Silk Board (12.3 km)", "departures": 56, "actual_mean": 39.3, "current": 2.4, "historical": 6.5, "forecast": 2.1}
+  ],
+  "metrla": {"stid": [2.81, 3.18, 3.55], "graph_wavenet_paper": [2.69, 3.07, 3.53]},
+  "notes": [
+    "The app uses GCN + road graph. Pretrained STID scored slightly lower error, but that rests on one pretraining run and one test week.",
+    "STID has no road graph and ties the GCN, so model design matters as much as the graph on 33 days of data.",
+    "One test week and one corridor: results are indicative, not general."
+  ]
+}

@@ -6,3 +6,4 @@ dashboard*.html
 Traffic_Forecast_Replay*.html
 metrla/
 .venv/
+app/data/

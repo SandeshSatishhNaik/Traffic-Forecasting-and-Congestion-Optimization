@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ORR Traffic Intelligence</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <div class="brand">
+    <h1>Bengaluru ORR Traffic Intelligence</h1>
+    <div class="sub">Spatio-temporal traffic forecasting and congestion optimization &middot; 21 connected road stretches</div>
+  </div>
+  <div class="badge" id="badge">Offline replay of recorded data</div>
+</header>
+<nav id="tabs">
+  <button data-tab="replay" class="on">Replay</button>
+  <button data-tab="route">Route planner</button>
+  <button data-tab="models">Models</button>
+  <button data-tab="how">How it works</button>
+</nav>
+
+<!-- shared replay clock -->
+<section class="clock" id="clock">
+  <div class="days" id="days"></div>
+  <div class="timerow">
+    <button id="play" class="btn" title="Play / pause">&#9654;</button>
+    <input type="range" id="slot" min="0" max="95" value="72">
+    <div class="tlabel" id="tlabel">--</div>
+  </div>
+</section>
+
+<main>
+  <!-- LIVE REPLAY -->
+  <section id="tab-replay" class="tab on">
+    <div class="grid2">
+      <div class="card mapcard">
+        <div class="cardhead">
+          <div class="seg" id="hseg">
+            <button data-h="now" class="on">Now</button><button data-h="15">+15 min</button><button data-h="30">+30 min</button><button data-h="60">+60 min</button>
+          </div>
+          <label class="toggle"><input type="checkbox" id="showActual"> Show what actually happened</label>
+        </div>
+        <svg id="map" viewBox="0 0 800 560" role="img" aria-label="Map of the road stretches coloured by speed"></svg>
+        <div class="legend">
+          <span><i style="background:var(--free)"></i>Free flowing (75%+ of normal)</span>
+          <span><i style="background:var(--slow)"></i>Slow (60 to 75%)</span>
+          <span><i style="background:var(--severe)"></i>Congested (below 60%)</span>
+          <span><i style="background:var(--none)"></i>No reading</span>
+        </div>
+        <div class="maptitle" id="maptitle"></div>
+      </div>
+      <div class="side">
+        <div class="card">
+          <h2>Corridor speed</h2>
+          <div class="kpis" id="kpis"></div>
+        </div>
+        <div class="card">
+          <h2>Congestion alerts <span class="muted" id="alertcount"></span></h2>
+          <div class="seg small" id="aseg"><button data-a="all" class="on">All</button><button data-a="15">15 min</button><button data-a="30">30 min</button><button data-a="60">60 min</button></div>
+          <div id="alerts" class="alerts"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>All road stretches at this moment <span class="muted">(km/h)</span></h2>
+      <div class="tablewrap"><table id="roadtable"></table></div>
+    </div>
+  </section>
+
+  <!-- ROUTE PLANNER -->
+  <section id="tab-route" class="tab">
+    <div class="grid2">
+      <div class="card mapcard">
+        <svg id="rmap" viewBox="0 0 800 560" role="img" aria-label="Map with the planned route"></svg>
+        <div class="legend"><span><i style="background:var(--route)"></i>Forecast route</span><span><i style="background:var(--live)"></i>Route a live map would pick</span><span class="muted">Click a road to set start, then destination</span></div>
+      </div>
+      <div class="side">
+        <div class="card">
+          <h2>Plan a trip</h2>
+          <label class="fl">Start<select id="src"></select></label>
+          <label class="fl">Destination<select id="dst"></select></label>
+          <div class="muted small" style="margin:6px 0 10px">Departure: the replay time above (<span id="rdep">--</span>)</div>
+          <div class="presets" id="presets"></div>
+          <button class="btn primary" id="plan">Plan fastest route</button>
+        </div>
+        <div id="rout"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MODELS -->
+  <section id="tab-models" class="tab">
+    <div class="card"><h2>Forecast error by model <span class="muted">(MAE in km/h, test week 25 to 31 Oct 2026, lower is better)</span></h2><div id="mtable"></div><div class="muted small" id="msrc"></div></div>
+    <div class="grid3">
+      <div class="card"><h2>This replay window</h2><div id="acc"></div></div>
+      <div class="card"><h2>Congestion alerts (F1)</h2><div id="alerttable"></div></div>
+      <div class="card"><h2>Trip-time error (minutes)</h2><div id="triptable"></div></div>
+    </div>
+    <div class="card"><h2>Notes</h2><ul id="mnotes"></ul></div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section id="tab-how" class="tab">
+    <div class="card"><h2>From road readings to decisions</h2><div class="flow" id="flow"></div></div>
+    <div class="grid2 even">
+      <div class="card"><h2>What runs where</h2><ul class="plain" id="where"></ul></div>
+      <div class="card"><h2>Honest limits</h2><ul class="plain" id="limits"></ul></div>
+    </div>
+  </section>
+</main>
+<footer id="foot"></footer>
+<div id="tip" class="tip"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>
