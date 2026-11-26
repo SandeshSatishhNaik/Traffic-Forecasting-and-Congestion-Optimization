@@ -9,3 +9,5 @@ metrla/
 app/data/
 liveapp/data/
 liveapp/models/
+node_modules/
+.impeccable/review/

@@ -66,6 +66,21 @@ To retrain on the newest data (for example the evening before the demo): `python
 Say once, clearly: the data are real TomTom readings collected by our own pipeline; live means the newest
 reading, which is at most 15 minutes old in rush hours and up to 2 hours old at night.
 
+## Main screen (React)
+
+`http://127.0.0.1:8000/` is a React app styled after the ORR's roadside message signs. The built files are in
+`static/app/` (committed, so running the app needs only Python). The earlier page stays at `/classic`.
+
+- **Pipeline strip** (top): TomTom reading -> data cache -> graph neural network (15 networks, run time in ms) ->
+  forecast (alerts). A light runs along it whenever new readings arrive (live) or the moment changes (replay).
+- **Horizon tiles** on the map: Now / +15 / +30 / +60 min; the map recolours to the chosen horizon.
+- **Next hour**: sign-style messages ("Congested now", "Jam in 30 min") that re-rank in place, plus the corridor chart.
+- **Road**: click a road for its numbers, chart and the unseen-road test. **Proof**: test-week errors and limits.
+- **Replay a day**: day picker, play at 1x/2x/4x, a strip of the whole day coloured by speed.
+
+To change it: `cd liveapp/web`, `npm install` once, `npm run dev` (hot reload, uses the running backend on port
+8000), then `npm run build` to update `static/app/`.
+
 ## 3D space-time view and unseen roads
 
 `/static/3d.html` (button **3D view** on the main page): the floor is the road map coloured by the speed now; walls

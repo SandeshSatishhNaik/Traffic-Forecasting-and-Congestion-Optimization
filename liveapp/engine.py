@@ -13,6 +13,7 @@ import os
 import sys
 import threading
 import time
+import warnings
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -291,7 +292,26 @@ class Engine:
                 row = self.G[k, js] / refs
                 act = None if np.isnan(row).all() else round(float(np.nanmean(row)), 3)
             fut.append(dict(t=ta.strftime("%Y-%m-%dT%H:%M"), h=h, mean=round(m, 3), lo=round(lo, 3), hi=round(hi, 3), actual=act))
-        return dict(road=road, time=t.strftime("%Y-%m-%dT%H:%M"), past=past, forecast=fut)
+        stamps = [pd.Timestamp(p[0]) for p in past] + [pd.Timestamp(f["t"]) for f in fut]
+        return dict(road=road, time=t.strftime("%Y-%m-%dT%H:%M"), past=past, forecast=fut,
+                    daytype=str(prepare.day_type(pd.DatetimeIndex([t]))[0]), typical=self.typical(js, refs, stamps))
+
+    def typical(self, js, refs, stamps):
+        """The usual speed ratio at each time: median over earlier days of the same day type, same time of day.
+        Only days before the moment shown are used, so a replayed day is never compared with itself or the future."""
+        idx = self.grid.index
+        with np.errstate(all="ignore"), warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            ratio = np.nanmean(self.G[:, js] / refs, axis=1)
+        dtype = np.asarray(prepare.day_type(idx)).astype(str)
+        tod, day = idx.strftime("%H:%M"), idx.normalize()
+        out = []
+        for s in stamps:
+            m = (tod == s.strftime("%H:%M")) & (dtype == str(prepare.day_type(pd.DatetimeIndex([s]))[0])) & (day < s.normalize())
+            v = ratio[m]
+            v = v[~np.isnan(v)]
+            out.append([s.strftime("%Y-%m-%dT%H:%M"), round(float(np.median(v)), 3) if len(v) >= 2 else None])
+        return out
 
     def timeline(self, date):
         """Every slot of a day: corridor speed ratio from the recorded readings (for the time-lapse strip)."""

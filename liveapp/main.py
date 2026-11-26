@@ -64,6 +64,14 @@ def docs():
 
 @app.get("/", include_in_schema=False)
 def index():
+    """The React app (built from liveapp/web into static/app); the earlier page when it has not been built."""
+    built = os.path.join(STATIC, "app", "index.html")
+    return FileResponse(built if os.path.exists(built) else os.path.join(STATIC, "index.html"))
+
+
+@app.get("/classic", include_in_schema=False)
+def classic():
+    """The earlier plain-JavaScript page, kept as a fallback."""
     return FileResponse(os.path.join(STATIC, "index.html"))
 
 

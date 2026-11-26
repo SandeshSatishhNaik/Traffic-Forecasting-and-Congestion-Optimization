@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-26T00:00:00Z",
+  "title": "Design System: ORR Traffic Intelligence",
+  "extensions": {
+    "colorMeta": {
+      "led-amber": { "role": "primary", "displayName": "LED Amber", "canonical": "#ffb000", "tonalRamp": ["#3d2a00", "#664400", "#8f5f00", "#b87b00", "#e09600", "#ffb000", "#ffc84d", "#ffe5a8"] },
+      "virtual-cyan": { "role": "secondary", "displayName": "Virtual Cyan", "canonical": "#3fd0e0", "tonalRamp": ["#0c3a40", "#125860", "#1a7a85", "#25a0ad", "#3fd0e0", "#74dde8", "#a5e9f0", "#d4f5f8"] },
+      "jam": { "role": "tertiary", "displayName": "Jam Red", "canonical": "#f24834", "tonalRamp": ["#3f0f09", "#6e1a10", "#9c2517", "#c93222", "#f24834", "#f67566", "#f9a398", "#fcd2cc"] },
+      "slow": { "role": "tertiary", "displayName": "Slow Orange", "canonical": "#ffa800", "tonalRamp": ["#3d2800", "#664300", "#8f5e00", "#b87a00", "#e09400", "#ffa800", "#ffc44d", "#ffe2a6"] },
+      "free": { "role": "tertiary", "displayName": "Free Teal", "canonical": "#1fbfb8", "tonalRamp": ["#0b3319", "#12532a", "#1a7a3e", "#22a055", "#2ecc71", "#6add97", "#9fe8bb", "#d0f4de"] },
+      "sign-housing": { "role": "neutral", "displayName": "Sign Housing", "canonical": "#08090b", "tonalRamp": ["#08090b", "#101216", "#161920", "#2a2e36", "#3b414c", "#7d8593", "#aab1bd", "#eef0f3"] },
+      "sign-face": { "role": "neutral", "displayName": "Sign Face", "canonical": "#101216", "tonalRamp": ["#08090b", "#101216", "#161920", "#2a2e36", "#3b414c", "#7d8593", "#aab1bd", "#eef0f3"] },
+      "ink": { "role": "neutral", "displayName": "Ink", "canonical": "#eef0f3", "tonalRamp": ["#3b414c", "#5a616d", "#7d8593", "#9aa1ad", "#aab1bd", "#c5cad2", "#dde0e5", "#eef0f3"] }
+    },
+    "typographyMeta": {
+      "led-numeral": { "displayName": "LED numeral", "purpose": "Headline values, counters and sign messages in Doto; never prose." },
+      "headline": { "displayName": "Headline", "purpose": "App title and road name in Barlow Condensed." },
+      "title": { "displayName": "Title", "purpose": "Tabs, panel headings, tile keys." },
+      "body": { "displayName": "Body", "purpose": "Explanations and proof text in Barlow." },
+      "label": { "displayName": "Label", "purpose": "Units, sources, axis text, table cells; tabular numerals." }
+    },
+    "shadows": [
+      { "name": "amber-ring", "value": "0 0 0 1px #ffb000, 0 0 18px rgba(255,176,0,.25)", "purpose": "Changed row or selected tile; signals change/selection only." },
+      { "name": "overlay-lift", "value": "0 8px 24px rgba(0,0,0,.5)", "purpose": "Map tooltip and toast lifting off the map." },
+      { "name": "led-glow", "value": "0 0 4px currentColor", "purpose": "LED numerals and sign messages." }
+    ],
+    "motion": [
+      { "name": "ease", "value": "cubic-bezier(.2,.9,.2,1)", "purpose": "Default easing for panels, rows, digit roll, cursor." },
+      { "name": "led-roll", "value": ".42s", "purpose": "Digit roll on every recompute." },
+      { "name": "pipeline-spark", "value": ".5s ease-in", "purpose": "Light pulse along a wire when data lands." },
+      { "name": "reduced-motion", "value": "durations .001ms; map flow hidden", "purpose": "prefers-reduced-motion fallback." }
+    ],
+    "breakpoints": [
+      { "name": "compact", "value": "1280px" },
+      { "name": "stacked", "value": "900px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Mode Switch",
+      "kind": "nav",
+      "refersTo": "mode-switch-on",
+      "description": "LIVE / REPLAY segmented switch; selected side fills amber.",
+      "html": "<div class=\"ds-modes\"><button class=\"ds-on\">Live</button><button>Replay</button></div>",
+      "css": ".ds-modes{display:inline-flex;padding:3px;border:1px solid #2a2e36;border-radius:6px;background:#000}.ds-modes button{border:0;background:none;padding:8px 18px;border-radius:4px;font:600 1.05rem 'Barlow Condensed',sans-serif;color:#aab1bd;cursor:pointer;transition:background .2s,color .2s}.ds-modes button:hover{color:#eef0f3}.ds-modes button:focus-visible{outline:2px solid #ffb000;outline-offset:2px}.ds-modes .ds-on{background:#ffb000;color:#111}"
+    },
+    {
+      "name": "Horizon Tile",
+      "kind": "chip",
+      "refersTo": "horizon-tile",
+      "description": "One of four equal forecast-horizon selectors over the map.",
+      "html": "<button class=\"ds-tile ds-on\"><span class=\"ds-k\">+30 min</span><span class=\"ds-s\">12 jams</span></button>",
+      "css": ".ds-tile{text-align:left;display:grid;gap:2px;width:150px;padding:9px 12px 8px;border:1px solid #2a2e36;border-radius:6px;background:rgba(8,9,11,.9);color:#eef0f3;cursor:pointer;transition:border-color .2s,transform .2s}.ds-tile:hover{border-color:#3b414c;transform:translateY(-1px)}.ds-tile:focus-visible{outline:2px solid #ffb000;outline-offset:2px}.ds-k{font:700 1.05rem 'Barlow Condensed',sans-serif;letter-spacing:.03em}.ds-s{color:#7d8593;font-size:.82rem}.ds-tile.ds-on{border-color:#ffb000;background:#000;box-shadow:0 0 0 1px #ffb000,0 10px 26px rgba(0,0,0,.55)}.ds-tile.ds-on .ds-k{color:#ffb000}"
+    },
+    {
+      "name": "Side Tabs",
+      "kind": "nav",
+      "refersTo": "tab-on",
+      "description": "Panel tabs; selected is amber with a 2px underline.",
+      "html": "<div class=\"ds-tabs\"><button class=\"ds-on\">Road</button><button>Proof</button></div>",
+      "css": ".ds-tabs{display:flex;border-bottom:1px solid #2a2e36}.ds-tabs button{flex:1;border:0;background:none;padding:12px 6px 11px;font:600 1.1rem 'Barlow Condensed',sans-serif;color:#aab1bd;border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer;transition:color .2s,border-color .2s}.ds-tabs button:hover{color:#eef0f3}.ds-tabs button:focus-visible{outline:2px solid #ffb000;outline-offset:-2px}.ds-tabs .ds-on{color:#ffb000;border-bottom-color:#ffb000}"
+    },
+    {
+      "name": "Sign Row",
+      "kind": "custom",
+      "refersTo": "sign-row",
+      "description": "Message-board row for one hotspot: LED message, road name, ramp-coloured speed cells.",
+      "html": "<div class=\"ds-sign\"><button class=\"ds-sign-btn\"><span class=\"ds-msg\">Bellandur - jam in 30 min</span><span class=\"ds-road\">Bellandur</span><span class=\"ds-cells\"><i style=\"background:#f24834\">38</i><i style=\"background:#ffa800\">41</i></span></button></div>",
+      "css": ".ds-sign{border:1px solid #2a2e36;border-radius:6px;background:#000 radial-gradient(circle at 1px 1px,rgba(255,255,255,.08) 1px,transparent 1.3px) 0 0/5px 5px}.ds-sign:hover{border-color:#aab1bd}.ds-sign-btn{width:100%;border:0;background:none;text-align:left;padding:9px 11px;display:grid;grid-template-columns:1fr auto;gap:1px 10px;align-items:center;color:#eef0f3;cursor:pointer}.ds-sign-btn:focus-visible{outline:2px solid #ffb000;outline-offset:2px}.ds-msg{grid-column:1/-1;font:900 1.12rem 'Doto',monospace;text-transform:uppercase;letter-spacing:.03em;color:#ff5a46;text-shadow:0 0 4px currentColor;white-space:nowrap}.ds-road{font-weight:600;font-size:.98rem}.ds-cells{display:flex;gap:3px}.ds-cells i{width:40px;padding:5px 0;text-align:center;border-radius:4px;font-style:normal;font-weight:600;font-size:.8rem;color:#0b0c0e}"
+    },
+    {
+      "name": "Pipeline Stage",
+      "kind": "custom",
+      "refersTo": "sign-face",
+      "description": "One of four pipeline signs; rings amber when it fires.",
+      "html": "<div class=\"ds-stage\"><span class=\"ds-stage-k\">Forecast</span><span class=\"ds-led\">15</span><span class=\"ds-stage-s\">networks</span></div>",
+      "css": ".ds-stage{display:grid;grid-template-columns:auto 1fr;column-gap:12px;align-items:baseline;padding:8px 12px;border:1px solid #2a2e36;border-radius:6px;background:#101216;color:#eef0f3}.ds-stage:hover{border-color:#3b414c}.ds-stage-k{grid-column:1/-1;font:600 .82rem 'Barlow Condensed',sans-serif;color:#aab1bd}.ds-led{font:900 2.3rem/1 'Doto',monospace;color:#ffb000;text-shadow:0 0 4px currentColor;font-variant-numeric:tabular-nums}.ds-stage-s{color:#7d8593;font-size:.8rem}"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "ghost-button",
+      "description": "Quiet outlined action such as Back or Close.",
+      "html": "<button class=\"ds-ghost\">Back</button>",
+      "css": ".ds-ghost{border:1px solid #3b414c;background:none;border-radius:6px;padding:5px 13px;font-size:.86rem;color:#aab1bd;cursor:pointer;transition:color .2s,border-color .2s}.ds-ghost:hover{color:#eef0f3;border-color:#aab1bd}.ds-ghost:focus-visible{outline:2px solid #ffb000;outline-offset:2px}"
+    },
+    {
+      "name": "Play Button",
+      "kind": "button",
+      "refersTo": "play-button",
+      "description": "Replay play/pause disc in amber.",
+      "html": "<button class=\"ds-play\" aria-label=\"Play\"><svg viewBox=\"0 0 24 24\" width=\"20\" height=\"20\"><path d=\"M8 5v14l11-7z\" fill=\"currentColor\"/></svg></button>",
+      "css": ".ds-play{width:42px;height:42px;border-radius:50%;border:0;background:#ffb000;color:#111;display:grid;place-items:center;cursor:pointer;transition:transform .15s}.ds-play:hover{transform:scale(1.06)}.ds-play:focus-visible{outline:2px solid #ffb000;outline-offset:3px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Roadside Message Sign",
+    "overview": "The interface is the ORR's own variable message sign repurposed as a control surface. Housings are matte black with a faint dot-pitch texture, frames are thin aluminium lines, and one LED amber carries every interactive and \"this just changed\" signal. Traffic state never borrows the amber accent's job: it comes only from the congestion ramp and is always paired with a number.\n\nDensity is operator-grade: a header sign, a four-stage pipeline strip, a map that owns the field, and a 450px message board on the right. It is built for a projector and for judges clicking on a laptop, so contrast and scale beat subtlety. It rejects the generic dark dashboard of card tiles and neon glows.",
+    "keyCharacteristics": [
+      "Dark only (color-scheme: dark); no glass, no gradients on text.",
+      "Amber is the single interface accent; red/orange/lime/green appear only as traffic state.",
+      "Dot-matrix (Doto) for headline values and sign messages; Barlow family for everything else.",
+      "Flat frames; glow is reserved for \"just changed\" and LED text.",
+      "Motion explains data flow (pulse along the pipeline, digit roll, row re-rank) and honours reduced motion."
+    ],
+    "rules": [
+      { "name": "The Ramp-Only Rule", "body": "Congestion colour comes from the ramp and always sits beside a number or word. Amber never means \"slow traffic\" beyond the ramp's own amber stop; interface amber stays on controls and change signals.", "section": "colors" },
+      { "name": "The One Voice Rule", "body": "Amber is the only interface accent. Anything new that wants a second accent is a data state and belongs on the ramp or the virtual-cyan channel.", "section": "colors" },
+      { "name": "The LED Scarcity Rule", "body": "Doto appears only on numerals and sign messages. Never set a paragraph, button label, or heading in it.", "section": "typography" },
+      { "name": "The Glow-Means-Change Rule", "body": "Amber glow marks something that just updated or is selected. It never decorates resting surfaces.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do colour traffic state only from the ramp in lib.js and the .ramp gradient, and print the number or word next to it.",
+      "Do keep amber (#ffb000) as the sole interface accent, and dark text (#111) on amber fills.",
+      "Do set secondary text at Ink Secondary (#aab1bd) or lighter; Ink Tertiary is for small supporting text only.",
+      "Do show estimated values (virtual sensor) in cyan with a dashed treatment, so measured and estimated never look alike.",
+      "Do keep the 2px amber focus ring and a reduced-motion fallback on any new animation."
+    ],
+    "donts": [
+      "Don't use the generic dark dashboard look: floating glass cards, neon glows, gradient text.",
+      "Don't use amber glow, spark or pulse on resting elements; it signals change.",
+      "Don't colour a control with a ramp colour, or a traffic value with the interface amber.",
+      "Don't use Doto outside numerals and sign messages."
+    ]
+  }
+}
