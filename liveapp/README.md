@@ -66,6 +66,27 @@ To retrain on the newest data (for example the evening before the demo): `python
 Say once, clearly: the data are real TomTom readings collected by our own pipeline; live means the newest
 reading, which is at most 15 minutes old in rush hours and up to 2 hours old at night.
 
+## 3D space-time view and unseen roads
+
+`/static/3d.html` (button **3D view** on the main page): the floor is the road map coloured by the speed now; walls
+rise above each road to the +15, +30 and +60 minute forecasts (height = minutes ahead). Live and replay; hover or
+click a road for details. three.js is bundled in `static/vendor/three/`, so it works offline.
+
+**Unseen-road test** (panel in the 3D view, API `/api/unseen?road=...&t=...`): what if we had never seen a road?
+
+```
+python liveapp/train_unseen.py --jobs 3     # once: 21 roads x 3 horizons x 2 seeds, each road hidden from training (about 40 min on 16 cores)
+```
+For every road this trains networks that never saw it (no reading of it in training or validation; it gets the mean
+road embedding) and saves them in `liveapp/models/unseen/` (derived from readings: not in git). Training also blanks
+one random known road per extra sample, so the network learns to fill a road in from its neighbours. Two cases:
+- **No sensor** (virtual sensor): the road's inputs are blank; the estimate of now and of +15/+30/+60 min comes only
+  from the connected roads through the road graph.
+- **New sensor**: the road just started sending readings; its own live readings are inputs, but it has no training history.
+
+The panel shows the forecast next to the normal model and what happened, plus the error measured on the test
+week. Results: `modeling/results/unseen-roads-<date>.md`.
+
 ## Honest limits
 
 - Readings come every 15 minutes in rush hours and every 30 minutes to 2 hours otherwise, so "live" is as fresh as the last reading.

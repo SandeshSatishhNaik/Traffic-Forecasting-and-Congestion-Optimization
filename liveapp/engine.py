@@ -167,6 +167,70 @@ class Engine:
             self.cache[i] = res
         return res
 
+    # ------------------------------------------------------------------ unseen roads (train_unseen.py)
+    def unseen(self, i, road):
+        """Forecasts for `road` from networks that never saw it in training (liveapp/models/unseen/).
+        new sensor: its own latest readings are inputs (normal speed from one week of nights);
+        no sensor:  its inputs are blank, the estimate comes only from connected roads (virtual sensor).
+        All values are ratios of the road's normal speed, next to the normal model and what happened."""
+        d = os.path.join(self.model_dir, "unseen")
+        ev_path = os.path.join(d, f"eval_{road}.json")
+        if not os.path.exists(ev_path):
+            return dict(error="no unseen-road models for this road yet: run python liveapp/train_unseen.py")
+        key = ("unseen", i, road)
+        with self.lock:
+            if key in self.cache:
+                return self.cache[key]
+        ev = json.load(open(ev_path, encoding="utf-8"))
+        if not hasattr(self, "unseen_nets"):
+            self.unseen_nets = {}
+        if road not in self.unseen_nets:
+            A = prepare.adjacency(self.ids, kind=("flow", "crossing"))
+            hp, nets = self.meta["hp"], {}
+            for h in H:
+                nets[h] = []
+                for f in sorted(os.listdir(d)):
+                    if f.startswith(f"unseen_{road}_h{h}_s") and f.endswith(".pt"):
+                        net = stgnn.Net(A, "graph", self.meta["c_in"], hid=hp["hid"], emb=hp["emb"], drop=hp["drop"])
+                        net.load_state_dict(torch.load(os.path.join(d, f), map_location="cpu"))
+                        nets[h].append(net.eval())
+            self.unseen_nets[road] = nets
+        nets, j, L = self.unseen_nets[road], self.ids.index(road), stgnn.LAGS
+        ref_full, ref_week = float(self.ref[road]), float(ev["ref_week"])
+        nb = [self.ids.index(r) for r in ev["neighbours"]]
+
+        def inputs(k, mode):
+            x = self.X[self.pos[self.times[k]]].copy()
+            if mode == "none":
+                x[j, :L], x[j, L:2 * L] = 1.0, 0.0
+            else:
+                x[j, :L] = np.where(x[j, L:2 * L] > 0, x[j, :L] * ref_full / ref_week, 1.0)
+            return torch.tensor(x[None])
+
+        def run(k, h, mode):
+            with torch.no_grad():
+                out = np.mean([net(inputs(k, mode))[0].numpy() for net in nets[h]], 0)
+            v = out[j] * (ref_week / ref_full if mode == "new" else 1.0)
+            return round(float(v), 3), (round(float(out[nb].mean()), 3) if nb else None)
+
+        t = self.times[i]
+        fc, _ = self.forecast(i)
+        rows = []
+        for h in H:
+            ta = t + pd.Timedelta(minutes=h)
+            a = self.value(road, ta) if ta <= self.latest_time else None
+            none, nbr = run(i, h, "none")
+            rows.append(dict(h=h, t=ta.strftime("%Y-%m-%dT%H:%M"), virtual=none, nbr_forecast=nbr, new=run(i, h, "new")[0],
+                             normal=round(float(fc[h][0][j]) / ref_full, 3), actual=None if a is None else round(a / ref_full, 3)))
+        now, age = self.last_known(j, t)
+        nowcast = run(i - 1, 15, "none")[0] if i > 0 else None      # virtual sensor's estimate of "now" (made 15 min ago)
+        res = dict(road=road, label=self.label(road), dir=self.road_name(road), time=t.strftime("%Y-%m-%dT%H:%M"),
+                   neighbours=[self.label(r) for r in ev["neighbours"]], now_actual=None if now is None else round(now / ref_full, 3),
+                   nowcast=nowcast, rows=rows, measured=ev["h"], test_week=self.meta.get("test_range"))
+        with self.lock:
+            self.cache[key] = res
+        return res
+
     # ------------------------------------------------------------------ one moment
     def snapshot(self, i):
         t = self.times[i]

@@ -64,9 +64,10 @@ let tiles = null, tileOK = 0, tileErr = 0, tilesOffline = false;
 function setTiles() {
   if (tiles) map.removeLayer(tiles);
   if (tilesOffline) return;
-  const style = S.theme === "dark" ? "dark_all" : "light_all";
-  tiles = L.tileLayer(`https://{s}.basemaps.cartocdn.com/${style}/{z}/{x}/{y}{r}.png`,
-    { subdomains: "abcd", maxZoom: 19, attribution: "© OpenStreetMap contributors © CARTO" });
+  // CARTO basemaps now need an API key (they return "API KEY REQUIRED" tiles with HTTP 200), so use the
+  // standard OpenStreetMap tiles; dark mode inverts them with a CSS filter (.osm-tiles in style.css).
+  tiles = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    { maxZoom: 19, className: "osm-tiles", attribution: "© OpenStreetMap contributors" });
   tiles.on("tileload", () => { tileOK++; geoNote(); });
   tiles.on("tileerror", () => {
     tileErr++;
@@ -177,7 +178,7 @@ function frame(now) {
       const P = PART[r] || (PART[r] = []);
       while (P.length < want) P.push({ s: Math.random() * g.len, j: (Math.random() - 0.5) * 2 });
       if (P.length > want) P.length = want;
-      const v = (d.kmh || 0) * g.pxPerKm / 3600 * 75;   // 1 s on screen = 75 s of driving
+      const v = (d.kmh || 0) * g.pxPerKm / 3600 * 25;   // 1 s on screen = 25 s of driving (75 was too fast to follow)
       const c = rgb(d.ratio);
       for (const p of P) {
         p.s += v * dt; if (p.s > g.len) p.s -= g.len;

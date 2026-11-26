@@ -46,7 +46,7 @@ main { display: grid; grid-template-columns: 1fr 430px; min-height: 0; }
   border-radius: 10px; padding: 8px 12px; font-weight: 700; letter-spacing: .3px; box-shadow: var(--shadow); text-align: right; }
 .hud-tr .sub { display: block; font-weight: 400; font-size: 12px; color: var(--mut); letter-spacing: 0; }
 .hud-bl { left: 14px; bottom: 14px; }
-.hud-br { right: 14px; bottom: 22px; background: color-mix(in srgb, var(--panel) 80%, transparent); padding: 4px 8px; border-radius: 6px; }
+.hud-br { right: 58px; bottom: 22px; background: color-mix(in srgb, var(--panel) 80%, transparent); padding: 4px 8px; border-radius: 6px; }
 .legend { background: color-mix(in srgb, var(--panel) 90%, transparent); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; width: 300px; box-shadow: var(--shadow); }
 .ramp { height: 9px; border-radius: 5px; background: linear-gradient(90deg, #b3132b 0%, #ef4444 38%, #f59e0b 62%, #a3e635 85%, #22c55e 100%); }
 .ramp-l { display: flex; justify-content: space-between; font-size: 11px; color: var(--mut); margin: 3px 0 4px; }
@@ -63,6 +63,9 @@ main { display: grid; grid-template-columns: 1fr 430px; min-height: 0; }
   padding: 9px 16px; border-radius: 999px; font-weight: 600; transition: transform .35s ease, opacity .35s ease, visibility .35s; box-shadow: var(--shadow); }
 .toast.show { transform: translate(-50%, 0); opacity: 1; visibility: visible; }
 .offline-grid { background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); background-size: 40px 40px; }
+/* OpenStreetMap tiles are colourful; mute them so the speed-coloured roads stay the focus */
+.osm-tiles { filter: grayscale(0.65) brightness(1.04) contrast(0.88); }
+[data-theme="dark"] .osm-tiles { filter: invert(1) hue-rotate(180deg) grayscale(0.6) brightness(0.72) contrast(0.92); }
 
 /* ------------------------------------------------ side panel */
 .side { background: var(--panel); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
@@ -160,3 +163,6 @@ tr.used .mbar { background: var(--accent); }
 .tlabel { min-width: 190px; font-weight: 700; font-variant-numeric: tabular-nums; }
 
 @media (max-width: 1100px) { main { grid-template-columns: 1fr 360px; } .brand p { display: none; } }
+.link3d { text-decoration: none; font-weight: 700; font-size: 13px; color: #fff; padding: 7px 14px; border-radius: 999px;
+  background: linear-gradient(135deg, #5b8cff, #22d3ee); box-shadow: 0 0 16px rgba(34,211,238,.45); white-space: nowrap; }
+.link3d:hover { filter: brightness(1.1); }

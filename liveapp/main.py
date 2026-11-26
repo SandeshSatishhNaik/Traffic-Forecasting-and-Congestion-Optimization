@@ -103,6 +103,16 @@ def series(t: str = "latest", road: str = None, hours: float = 6):
     return E.series(E.slot(t), road, hours)
 
 
+@app.get("/api/unseen", summary="One road treated as unseen: forecasts from networks that never saw it (new sensor / no sensor)")
+def unseen(road: str, t: str = "latest"):
+    if road not in E.ids:
+        raise HTTPException(400, "unknown road stretch")
+    r = E.unseen(E.slot(t), road)
+    if "error" in r:
+        raise HTTPException(409, r["error"])
+    return r
+
+
 @app.get("/api/route", summary="Fastest route on the forecast (time-dependent Dijkstra) against the live-map choice")
 def route(src: str, dst: str, t: str = "latest"):
     r = E.route(src, dst, E.slot(t))

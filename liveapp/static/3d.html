@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ORR Space-Time View</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%227%22 fill=%22%23121a2e%22/%3E%3Cpath d=%22M6 24 L13 10 L20 18 L26 8%22 stroke=%22%2322d3ee%22 stroke-width=%223%22 fill=%22none%22 stroke-linecap=%22round%22/%3E%3C/svg%3E">
+<style>
+:root { --bg: #050914; --panel: rgba(12,20,40,.78); --line: rgba(120,160,255,.18); --text: #e6ebf5; --mut: #8b97b3;
+  --accent: #5b8cff; --cyan: #22d3ee; --r: 14px; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); overflow: hidden;
+  font: 14px/1.45 "Segoe UI", "Inter", system-ui, -apple-system, Roboto, Arial, sans-serif; }
+canvas#gl { position: fixed; inset: 0; display: block; }
+.glass { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); backdrop-filter: blur(10px);
+  box-shadow: 0 10px 40px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.04); }
+.mut { color: var(--mut); } .small { font-size: 12px; }
+button { font: inherit; color: inherit; cursor: pointer; }
+
+/* top bar */
+.top { position: fixed; top: 14px; left: 14px; right: 14px; display: flex; align-items: center; gap: 16px; padding: 10px 16px; z-index: 10; }
+.top h1 { margin: 0; font-size: 17px; letter-spacing: .3px; }
+.top h1 span { color: var(--cyan); font-weight: 600; }
+.top .sub { font-size: 12px; color: var(--mut); }
+.grow { flex: 1; min-width: 0; }
+.pill { display: flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; background: rgba(255,255,255,.03); }
+.pill button { border: 0; background: none; padding: 6px 14px; border-radius: 999px; color: var(--mut); font-weight: 600; display: flex; gap: 8px; align-items: center; }
+.pill button.on { background: var(--accent); color: #fff; box-shadow: 0 0 18px rgba(91,140,255,.55); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: #ff4d4f; animation: pulse 1.6s infinite; }
+.pill button:not(.on) .dot { animation: none; background: var(--mut); }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,77,79,.7);} 70% { box-shadow: 0 0 0 9px rgba(255,77,79,0);} 100% { box-shadow: 0 0 0 0 rgba(255,77,79,0);} }
+.stat { font-size: 12px; color: var(--mut); text-align: right; }
+.stat b { color: var(--text); }
+.clock { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 16px; min-width: 76px; text-align: right; }
+a.btn, .btn { border: 1px solid var(--line); background: rgba(255,255,255,.04); color: var(--text); text-decoration: none; padding: 7px 12px; border-radius: 10px; font-weight: 600; font-size: 13px; }
+a.btn:hover, .btn:hover { border-color: var(--accent); }
+
+/* side panel */
+.side { position: fixed; top: 84px; right: 14px; bottom: 14px; width: 380px; z-index: 10; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; padding-right: 2px; }
+.side .glass { padding: 14px; }
+.side h3 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--mut); font-weight: 700; }
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.kpi { border: 1px solid var(--line); border-radius: 12px; padding: 8px 6px; text-align: center; background: rgba(255,255,255,.02); }
+.kpi b { display: block; font-size: 22px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.kpi span { font-size: 11px; color: var(--mut); }
+svg.chart { width: 100%; height: 170px; display: block; color: var(--mut); font-size: 10px; }
+.legend-l { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--mut); margin-top: 4px; }
+.legend-l i { display: inline-block; width: 16px; height: 3px; vertical-align: middle; margin-right: 4px; border-radius: 2px; }
+.hot { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; padding: 7px 8px; border-radius: 10px; cursor: pointer; border: 1px solid transparent; }
+.hot:hover { border-color: var(--line); background: rgba(255,255,255,.03); }
+.hot .nm { font-weight: 600; } .hot .dr { font-size: 11px; color: var(--mut); grid-column: 1; }
+.chips { display: flex; gap: 3px; grid-row: 1 / span 2; grid-column: 2; }
+.chips i { width: 30px; height: 22px; border-radius: 5px; font-style: normal; font-size: 10px; font-weight: 700; display: grid; place-items: center; color: #0b1020; }
+.tag { font-size: 10px; font-weight: 800; letter-spacing: .6px; padding: 2px 6px; border-radius: 5px; margin-left: 6px; vertical-align: middle; }
+.tag.early { background: #f59e0b; color: #1a1200; } .tag.now { background: #ef4444; color: #fff; }
+
+/* left: how to read */
+.help { position: fixed; left: 14px; top: 84px; width: 270px; padding: 12px 14px; z-index: 10; font-size: 12.5px; }
+.help h3 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--cyan); }
+.help ol { margin: 0; padding-left: 18px; } .help li { margin-bottom: 6px; }
+.help .ramp { height: 8px; border-radius: 4px; margin: 8px 0 3px; background: linear-gradient(90deg, #b3132b 0%, #ef4444 38%, #f59e0b 62%, #a3e635 85%, #22c55e 100%); }
+.help .rl { display: flex; justify-content: space-between; font-size: 11px; color: var(--mut); }
+.help .x { float: right; border: 0; background: none; color: var(--mut); font-size: 16px; line-height: 1; }
+.help.closed { display: none; }
+
+/* bottom: view + replay controls */
+.bottom { position: fixed; left: 14px; bottom: 14px; right: 408px; display: flex; gap: 12px; align-items: center; padding: 10px 14px; z-index: 10; flex-wrap: wrap; }
+.bottom select { background: #0c1428; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font: inherit; }
+.bottom input[type=range] { flex: 1; min-width: 160px; accent-color: var(--cyan); }
+.play { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: var(--accent); color: #fff; font-size: 14px; }
+.when { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 120px; }
+.sep { width: 1px; align-self: stretch; background: var(--line); }
+
+/* labels and tooltip */
+#labels { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+.lbl { position: absolute; transform: translate(-50%, -100%); font-size: 11px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase;
+  color: #cfe3ff; text-shadow: 0 0 6px rgba(0,0,0,.9), 0 0 2px #000; white-space: nowrap; }
+.lbl.axis { color: var(--cyan); letter-spacing: .6px; text-transform: none; font-size: 12px; transform: translate(6px, -50%); }
+.tip { position: fixed; z-index: 20; pointer-events: none; padding: 10px 12px; min-width: 220px; display: none; font-size: 13px; }
+.tip b { font-size: 14px; }
+.row { display: flex; justify-content: space-between; gap: 12px; }
+.toast { position: fixed; left: 50%; top: 80px; transform: translateX(-50%); z-index: 30; background: var(--accent); color: #fff; padding: 8px 16px;
+  border-radius: 999px; font-weight: 600; opacity: 0; transition: opacity .3s; pointer-events: none; }
+.toast.show { opacity: 1; }
+.usel { width: 100%; background: #0c1428; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font: inherit; margin-bottom: 8px; }
+.useg { margin-bottom: 8px; } .useg button { flex: 1; padding: 5px 8px; font-size: 12px; }
+.utab { width: 100%; border-collapse: collapse; margin: 6px 0; font-variant-numeric: tabular-nums; }
+.utab th, .utab td { padding: 4px 4px; text-align: center; border-bottom: 1px solid var(--line); }
+.utab th { font-size: 11px; color: var(--mut); font-weight: 600; } .utab td:first-child, .utab th:first-child { text-align: left; }
+.utab i { font-style: normal; font-weight: 700; padding: 1px 5px; border-radius: 4px; color: #0b1020; }
+.vtag { color: #22d3ee; font-weight: 800; letter-spacing: .6px; }
+@media (max-width: 1250px) { .help { display: none; } }
+</style>
+<script type="importmap">{ "imports": { "three": "/static/vendor/three/three.module.min.js" } }</script>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="labels"></div>
+
+<header class="top glass">
+  <div class="grow">
+    <h1>Space-Time View <span>· Bengaluru ORR</span></h1>
+    <div class="sub">Floor = the road map now · height = minutes into the future · colour = speed against the road's normal speed</div>
+  </div>
+  <div class="pill" id="modes"><button data-m="live" class="on"><span class="dot"></span>Live</button><button data-m="replay">Replay a day</button></div>
+  <div class="stat" id="stat">connecting…</div>
+  <div class="clock" id="clock"></div>
+  <a class="btn" href="/">2D map</a>
+</header>
+
+<aside class="help glass" id="help">
+  <button class="x" id="helpX" title="Hide">×</button>
+  <h3>How to read this</h3>
+  <ol>
+    <li><b>Floor</b>: the 21 road stretches, coloured by the speed recorded <b>now</b>. Dots are traffic: they crawl where the road is jammed.</li>
+    <li><b>Walls</b> rise above each road. Higher = further ahead: <b>+15</b>, <b>+30</b>, <b>+60 min</b>, forecast by the graph neural network.</li>
+    <li>A wall that turns <b>red as it rises</b> means congestion is coming. A wall that turns green means it will clear.</li>
+    <li>Rings on the floor: <span style="color:#ef4444">red</span> = congested now, <span style="color:#f59e0b">amber</span> = early warning (fine now, forecast to congest).</li>
+    <li>Drag to rotate, scroll to zoom, hover or click a road for details.</li>
+  </ol>
+  <div class="ramp"></div><div class="rl"><span>congested</span><span>60%</span><span>75%</span><span>free flow</span></div>
+</aside>
+
+<aside class="side">
+  <section class="glass">
+    <h3 id="kpiTitle">Corridor speed</h3>
+    <div class="kpis">
+      <div class="kpi"><b id="k0">–</b><span>now</span></div>
+      <div class="kpi"><b id="k15">–</b><span>+15 min</span></div>
+      <div class="kpi"><b id="k30">–</b><span>+30 min</span></div>
+      <div class="kpi"><b id="k60">–</b><span>+60 min</span></div>
+    </div>
+  </section>
+  <section class="glass">
+    <h3 id="chartTitle">Live forecast · whole corridor</h3>
+    <svg class="chart" id="chart"></svg>
+    <div class="legend-l"><span><i style="background:#f97316"></i>recorded</span><span><i style="background:#5b8cff"></i>forecast</span>
+      <span><i style="background:rgba(91,140,255,.35);height:8px"></i>range of 5 runs</span><span id="actLeg" style="display:none">○ what happened</span></div>
+    <div class="small mut" id="chartNote" style="margin-top:6px"></div>
+  </section>
+  <section class="glass" id="unseenBox">
+    <h3>Unseen-road test</h3>
+    <div class="small mut" style="margin-bottom:8px">What if we had <b>never seen</b> this road? Forecast it with networks trained without it.</div>
+    <select id="uRoad" class="usel"></select>
+    <div class="pill useg" id="uMode"><button data-u="off" class="on">Normal</button><button data-u="new">New sensor</button><button data-u="none">No sensor</button></div>
+    <div id="uOut" class="small"></div>
+  </section>
+  <section class="glass">
+    <h3>Hotspots · next hour</h3>
+    <div id="hot"></div>
+    <div class="small mut" style="margin-top:6px">Chips: now · +15 · +30 · +60 min. Click to fly there.</div>
+  </section>
+  <section class="glass small mut" id="engine"></section>
+</aside>
+
+<div class="bottom glass">
+  <button class="btn" id="vTop">Top view</button>
+  <button class="btn" id="v3d">3D view</button>
+  <button class="btn" id="vSpin">Auto-rotate: on</button>
+  <button class="btn" id="vHelp">How to read</button>
+  <span class="sep"></span>
+  <span id="replayCtl" style="display:none">
+    <select id="day"></select>
+    <button class="play" id="play" title="Play / pause">▶</button>
+    <input type="range" id="slider" min="0" max="0" value="0">
+  </span>
+  <span class="when" id="when">–</span>
+</div>
+
+<div class="tip glass" id="tip"></div>
+<div class="toast" id="toast"></div>
+<script type="module" src="/static/space3d.js?v=8"></script>
+</body>
+</html>
