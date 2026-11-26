@@ -4,6 +4,8 @@ Student PBL project (GM University): "AI-Driven Spatio-Temporal Traffic Intellig
 Forecasting and Congestion Optimization" on the Bengaluru Outer Ring Road (ORR). The team presents and defends
 it, so explain choices in simple language and say what is measured, estimated or untested.
 
+**Full background, results, decisions and open items: `docs/PROJECT_HANDOFF.md`. Read it at the start of a session.**
+
 ## Hard rules
 
 - **Data licence.** TomTom's terms forbid publishing or storing their readings publicly, and this repository is
